@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#73d8d5" />
+    <meta name="description" content="A friendly mobile car maintenance checklist and service log." />
+    <title>Pika Car Maint</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="assets/icon-192.png" />
+    <link rel="apple-touch-icon" href="assets/icon-192.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <img src="assets/icon-192.png" alt="" class="brand-icon" />
+          <div>
+            <p class="eyebrow">MY FAMILY CAR</p>
+            <h1>Pika Car Maint</h1>
+          </div>
+        </div>
+        <button class="icon-button" id="installButton" type="button" hidden aria-label="Install Pika Car Maint">↓</button>
+      </header>
+
+      <main>
+        <section class="view active" id="homeView" data-view="home">
+          <button class="vehicle-card" id="openVehicle" type="button" aria-label="Edit vehicle details">
+            <span class="vehicle-art" aria-hidden="true">🚗</span>
+            <span class="vehicle-copy">
+              <span class="vehicle-label">YOUR CAR</span>
+              <strong id="vehicleName">My Car</strong>
+              <span id="vehicleMeta">Tap to add vehicle details</span>
+            </span>
+            <span class="vehicle-mileage"><strong id="currentMileage">0</strong><small>KM</small></span>
+          </button>
+
+          <section class="status-grid" aria-label="Maintenance summary">
+            <article class="status-card coral">
+              <span class="status-icon" aria-hidden="true">!</span>
+              <strong id="dueCount">0</strong>
+              <span>Need attention</span>
+            </article>
+            <article class="status-card aqua">
+              <span class="status-icon" aria-hidden="true">✓</span>
+              <strong id="goodCount">0</strong>
+              <span>Looking good</span>
+            </article>
+            <article class="status-card butter">
+              <span class="status-icon" aria-hidden="true">﷼</span>
+              <strong id="monthSpend">0</strong>
+              <span>This month</span>
+            </article>
+          </section>
+
+          <section class="section-block">
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">NEXT UP</p>
+                <h2>Maintenance watch</h2>
+              </div>
+              <button class="text-button" type="button" data-go="checklist">See all</button>
+            </div>
+            <div id="priorityList" class="maintenance-list"></div>
+          </section>
+
+          <section class="tip-card">
+            <span aria-hidden="true">💡</span>
+            <div>
+              <strong>Little checks, safer trips</strong>
+              <p>Update your mileage regularly so Pika can spot services that are coming due.</p>
+            </div>
+          </section>
+        </section>
+
+        <section class="view" id="checklistView" data-view="checklist">
+          <div class="page-heading">
+            <p class="eyebrow">SERVICE PLANNER</p>
+            <h2>Maintenance checklist</h2>
+            <p>Track each item by mileage, date, or both.</p>
+          </div>
+          <div class="filter-row" role="group" aria-label="Filter maintenance items">
+            <button class="filter-chip active" type="button" data-filter="all">All</button>
+            <button class="filter-chip" type="button" data-filter="attention">Attention</button>
+            <button class="filter-chip" type="button" data-filter="good">Good</button>
+            <button class="filter-chip" type="button" data-filter="untracked">Not set</button>
+          </div>
+          <div id="checklistList" class="maintenance-list full-list"></div>
+          <button class="add-button" id="openAddItem" type="button"><span>＋</span> Add maintenance item</button>
+        </section>
+
+        <section class="view" id="historyView" data-view="history">
+          <div class="page-heading">
+            <p class="eyebrow">SERVICE LOG</p>
+            <h2>Maintenance history</h2>
+            <p>Every completed job is kept here automatically.</p>
+          </div>
+          <section class="spend-card">
+            <span>Total recorded cost</span>
+            <strong><small>﷼</small> <span id="totalSpend">0.00</span></strong>
+            <span id="serviceCount">0 service records</span>
+          </section>
+          <div id="historyList" class="history-list"></div>
+        </section>
+
+        <section class="view" id="carView" data-view="car">
+          <div class="page-heading">
+            <p class="eyebrow">YOUR GARAGE</p>
+            <h2>Car details</h2>
+            <p>Keep the current mileage accurate for better reminders.</p>
+          </div>
+          <form id="vehicleFormPage" class="form-card vehicle-form">
+            <label>Car nickname<input name="name" autocomplete="off" placeholder="My Car" /></label>
+            <label>Make and model<input name="model" autocomplete="off" placeholder="Toyota Prius 2013" /></label>
+            <label>Plate number<input name="plate" autocomplete="off" placeholder="ABC 1234" /></label>
+            <label>Current mileage (km)<input name="odometer" type="number" inputmode="numeric" min="0" step="1" placeholder="0" /></label>
+            <button class="primary-button" type="submit">Save car details</button>
+          </form>
+          <section class="data-card">
+            <div>
+              <strong>Your data</strong>
+              <p>Saved automatically on this device. Export a backup before changing phones.</p>
+            </div>
+            <div class="data-actions">
+              <button id="exportData" type="button">Export backup</button>
+              <label class="import-label">Import backup<input id="importData" type="file" accept="application/json" /></label>
+            </div>
+          </section>
+        </section>
+      </main>
+
+      <nav class="bottom-nav" aria-label="Main navigation">
+        <button class="nav-button active" type="button" data-go="home"><span aria-hidden="true">⌂</span>Home</button>
+        <button class="nav-button" type="button" data-go="checklist"><span aria-hidden="true">✓</span>Checklist</button>
+        <button class="nav-button" type="button" data-go="history"><span aria-hidden="true">↻</span>History</button>
+        <button class="nav-button" type="button" data-go="car"><span aria-hidden="true">🚗</span>My Car</button>
+      </nav>
+    </div>
+
+    <div class="modal" id="serviceModal" aria-hidden="true">
+      <button class="modal-backdrop" type="button" data-close aria-label="Close"></button>
+      <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="serviceTitle">
+        <div class="sheet-handle"></div>
+        <div class="sheet-heading"><div><p class="eyebrow">SERVICE DONE</p><h2 id="serviceTitle">Update item</h2></div><button type="button" class="close-button" data-close>×</button></div>
+        <form id="serviceForm" class="sheet-form">
+          <input type="hidden" name="itemId" />
+          <label>Service date<input name="date" type="date" required /></label>
+          <label>Mileage (km)<input name="mileage" type="number" inputmode="numeric" min="0" required /></label>
+          <label>Cost (SAR)<input name="cost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" /></label>
+          <label>Notes<textarea name="notes" rows="2" placeholder="Workshop, parts or reminder"></textarea></label>
+          <button class="primary-button" type="submit">Mark as completed</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="modal" id="itemModal" aria-hidden="true">
+      <button class="modal-backdrop" type="button" data-close aria-label="Close"></button>
+      <section class="bottom-sheet" role="dialog" aria-modal="true" aria-labelledby="itemTitle">
+        <div class="sheet-handle"></div>
+        <div class="sheet-heading"><div><p class="eyebrow">CUSTOM CHECK</p><h2 id="itemTitle">Add maintenance item</h2></div><button type="button" class="close-button" data-close>×</button></div>
+        <form id="itemForm" class="sheet-form">
+          <label>Item name<input name="name" required placeholder="Transmission fluid" /></label>
+          <label>Category<select name="category"><option>Engine</option><option>Tyres</option><option>Brakes</option><option>Fluids</option><option>Electrical</option><option>Exterior</option><option>Other</option></select></label>
+          <div class="split-fields">
+            <label>Every km<input name="intervalKm" type="number" inputmode="numeric" min="0" step="1000" placeholder="10000" /></label>
+            <label>Every months<input name="intervalMonths" type="number" inputmode="numeric" min="0" step="1" placeholder="6" /></label>
+          </div>
+          <button class="primary-button" type="submit">Add to checklist</button>
+        </form>
+      </section>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js" defer></script>
+  </body>
+</html>
