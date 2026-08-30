@@ -1,4 +1,6 @@
 const STORAGE_KEY = "pika-car-maint-v1";
+const SYNC_TIME_KEY = "pika-car-maint-sync-time";
+const SYNC_API = "/api/state";
 const DAY = 86400000;
 
 const defaultItems = [
@@ -22,6 +24,9 @@ const initialState = {
 let state = loadState();
 let activeFilter = "all";
 let deferredInstall;
+let lastUpdatedAt = Number(localStorage.getItem(SYNC_TIME_KEY)) || 0;
+let syncTimer;
+let syncInFlight = false;
 
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
@@ -41,8 +46,80 @@ function loadState() {
 }
 
 function saveState(message) {
+  lastUpdatedAt = Date.now();
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(SYNC_TIME_KEY, String(lastUpdatedAt));
   if (message) showToast(message);
+  render();
+  scheduleCloudSave();
+}
+
+function saveLocalCopy() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(SYNC_TIME_KEY, String(lastUpdatedAt));
+}
+
+function scheduleCloudSave() {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(pushCloudState, 650);
+}
+
+async function pushCloudState() {
+  if (!navigator.onLine || syncInFlight) return;
+  syncInFlight = true;
+  try {
+    const response = await fetch(SYNC_API, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ state, updatedAt: lastUpdatedAt })
+    });
+    const result = await response.json().catch(() => ({}));
+    if (response.status === 409 && result.state) {
+      applyRemoteState(result);
+    } else if (!response.ok) {
+      throw new Error(result.error || "Sync unavailable");
+    } else if (result.updatedAt) {
+      lastUpdatedAt = Number(result.updatedAt);
+      saveLocalCopy();
+    }
+  } catch {
+    // The local copy remains safe and will retry when the app reconnects.
+  } finally {
+    syncInFlight = false;
+  }
+}
+
+async function pullCloudState() {
+  if (!navigator.onLine || syncInFlight) return;
+  syncInFlight = true;
+  try {
+    const response = await fetch(SYNC_API, { headers: { Accept: "application/json" }, cache: "no-store" });
+    if (!response.ok) throw new Error("Sync unavailable");
+    const result = await response.json();
+    if (result.state && Number(result.updatedAt) > lastUpdatedAt) {
+      applyRemoteState(result);
+    } else if (!result.state || lastUpdatedAt > Number(result.updatedAt || 0)) {
+      syncInFlight = false;
+      await pushCloudState();
+      return;
+    }
+  } catch {
+    // Work offline without interrupting the user.
+  } finally {
+    syncInFlight = false;
+  }
+}
+
+function applyRemoteState(result) {
+  const remote = result.state;
+  if (!remote?.vehicle || !Array.isArray(remote.items) || !Array.isArray(remote.history)) return;
+  state = {
+    vehicle: { ...initialState.vehicle, ...remote.vehicle },
+    items: remote.items,
+    history: remote.history
+  };
+  lastUpdatedAt = Number(result.updatedAt) || Date.now();
+  saveLocalCopy();
   render();
 }
 
@@ -304,4 +381,13 @@ $("#installButton").addEventListener("click", async () => {
 
 if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
 
+window.addEventListener("online", pullCloudState);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") pullCloudState();
+});
+setInterval(() => {
+  if (document.visibilityState === "visible") pullCloudState();
+}, 15000);
+
 render();
+pullCloudState();
