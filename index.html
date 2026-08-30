@@ -111,10 +111,10 @@
             <p>Keep the current mileage accurate for better reminders.</p>
           </div>
           <form id="vehicleFormPage" class="form-card vehicle-form">
-            <label>Car nickname<input name="name" autocomplete="off" placeholder="My Car" /></label>
-            <label>Make and model<input name="model" autocomplete="off" placeholder="Toyota Prius 2013" /></label>
-            <label>Plate number<input name="plate" autocomplete="off" placeholder="ABC 1234" /></label>
-            <label>Current mileage (km)<input name="odometer" type="number" inputmode="numeric" min="0" step="1" placeholder="0" /></label>
+            <label>Car nickname<input name="name" maxlength="80" autocomplete="off" placeholder="My Car" /></label>
+            <label>Make and model<input name="model" maxlength="120" autocomplete="off" placeholder="Toyota Prius 2013" /></label>
+            <label>Plate number<input name="plate" maxlength="32" autocomplete="off" placeholder="ABC 1234" /></label>
+            <label>Current mileage (km)<input name="odometer" type="number" inputmode="numeric" min="0" max="10000000" step="1" placeholder="0" /></label>
             <button class="primary-button" type="submit">Save car details</button>
           </form>
           <section class="data-card">
@@ -146,9 +146,9 @@
         <form id="serviceForm" class="sheet-form">
           <input type="hidden" name="itemId" />
           <label>Service date<input name="date" type="date" required /></label>
-          <label>Mileage (km)<input name="mileage" type="number" inputmode="numeric" min="0" required /></label>
-          <label>Cost (SAR)<input name="cost" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0.00" /></label>
-          <label>Notes<textarea name="notes" rows="2" placeholder="Workshop, parts or reminder"></textarea></label>
+          <label>Mileage (km)<input name="mileage" type="number" inputmode="numeric" min="0" max="10000000" required /></label>
+          <label>Cost (SAR)<input name="cost" type="number" inputmode="decimal" min="0" max="100000000" step="0.01" placeholder="0.00" /></label>
+          <label>Notes<textarea name="notes" maxlength="2000" rows="2" placeholder="Workshop, parts or reminder"></textarea></label>
           <button class="primary-button" type="submit">Mark as completed</button>
         </form>
       </section>
@@ -160,11 +160,11 @@
         <div class="sheet-handle"></div>
         <div class="sheet-heading"><div><p class="eyebrow">CUSTOM CHECK</p><h2 id="itemTitle">Add maintenance item</h2></div><button type="button" class="close-button" data-close>×</button></div>
         <form id="itemForm" class="sheet-form">
-          <label>Item name<input name="name" required placeholder="Transmission fluid" /></label>
+          <label>Item name<input name="name" maxlength="120" required placeholder="Transmission fluid" /></label>
           <label>Category<select name="category"><option>Engine</option><option>Tyres</option><option>Brakes</option><option>Fluids</option><option>Electrical</option><option>Exterior</option><option>Other</option></select></label>
           <div class="split-fields">
-            <label>Every km<input name="intervalKm" type="number" inputmode="numeric" min="0" step="1000" placeholder="10000" /></label>
-            <label>Every months<input name="intervalMonths" type="number" inputmode="numeric" min="0" step="1" placeholder="6" /></label>
+            <label>Every km<input name="intervalKm" type="number" inputmode="numeric" min="0" max="1000000" step="1000" placeholder="10000" /></label>
+            <label>Every months<input name="intervalMonths" type="number" inputmode="numeric" min="0" max="1200" step="1" placeholder="6" /></label>
           </div>
           <button class="primary-button" type="submit">Add to checklist</button>
         </form>

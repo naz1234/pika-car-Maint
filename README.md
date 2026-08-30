@@ -15,6 +15,18 @@ A mobile-first, installable car maintenance checklist. It has no login or PIN. V
 
 ## Cloudflare Pages
 
+Production: <https://pika-car-maint.pages.dev>
+
+The `main` branch is connected to Cloudflare Pages and deploys automatically. The production project uses:
+
+- Framework preset: `None`
+- Build command: blank
+- Build output directory: repository root
+- D1 database: `pika-car-maint-db`
+- D1 binding: `DB`
+
+### Deploy another copy
+
 Connect this repository to Cloudflare Pages and use:
 
 - Framework preset: `None`

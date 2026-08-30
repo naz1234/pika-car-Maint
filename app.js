@@ -21,34 +21,91 @@ const initialState = {
   history: []
 };
 
+const $ = (selector, parent = document) => parent.querySelector(selector);
+const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
+
+const cleanText = (value, max, fallback = "") => typeof value === "string" ? value.slice(0, max) : fallback;
+const cleanId = value => {
+  const id = cleanText(value, 100).trim();
+  return id && !/[^A-Za-z0-9_-]/.test(id) ? id : "";
+};
+const cleanIcon = value => {
+  const icon = cleanText(value, 32);
+  return /[<>&"']/.test(icon) ? "" : icon;
+};
+const cleanNumber = (value, max, nullable = false) => {
+  if (value == null && nullable) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.min(max, Math.max(0, number)) : (nullable ? null : 0);
+};
+const cleanDate = value => {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : null;
+};
+
+function normalizeState(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value) || !value.vehicle || typeof value.vehicle !== "object") return null;
+  if (!Array.isArray(value.items) || !Array.isArray(value.history)) return null;
+  const items = value.items.slice(0, 250).flatMap(item => {
+    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+    const id = cleanId(item.id);
+    const name = cleanText(item.name, 120).trim();
+    if (!id || !name) return [];
+    return [{
+      id,
+      name,
+      category: cleanText(item.category, 40, "Other") || "Other",
+      icon: cleanIcon(item.icon),
+      intervalKm: cleanNumber(item.intervalKm, 1_000_000),
+      intervalMonths: cleanNumber(item.intervalMonths, 1_200),
+      lastKm: cleanNumber(item.lastKm, 10_000_000, true),
+      lastDate: cleanDate(item.lastDate)
+    }];
+  });
+  const history = value.history.slice(0, 5_000).flatMap(record => {
+    if (!record || typeof record !== "object" || Array.isArray(record)) return [];
+    const id = cleanId(record.id);
+    const itemId = cleanId(record.itemId);
+    const name = cleanText(record.name, 120).trim();
+    const date = cleanDate(record.date);
+    if (!id || !itemId || !name || !date) return [];
+    return [{ id, itemId, name, date, mileage: cleanNumber(record.mileage, 10_000_000), cost: cleanNumber(record.cost, 100_000_000), notes: cleanText(record.notes, 2_000) }];
+  });
+  return {
+    vehicle: {
+      name: cleanText(value.vehicle.name, 80, "My Car") || "My Car",
+      model: cleanText(value.vehicle.model, 120),
+      plate: cleanText(value.vehicle.plate, 32),
+      odometer: cleanNumber(value.vehicle.odometer, 10_000_000)
+    },
+    items,
+    history
+  };
+}
+
 let state = loadState();
 let activeFilter = "all";
 let deferredInstall;
-let lastUpdatedAt = Number(localStorage.getItem(SYNC_TIME_KEY)) || 0;
+const storedUpdatedAt = Number(localStorage.getItem(SYNC_TIME_KEY));
+let lastUpdatedAt = Number.isSafeInteger(storedUpdatedAt) && storedUpdatedAt >= 0 ? storedUpdatedAt : 0;
 let syncTimer;
 let syncInFlight = false;
-
-const $ = (selector, parent = document) => parent.querySelector(selector);
-const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     if (!saved) return structuredClone(initialState);
-    return {
-      vehicle: { ...initialState.vehicle, ...(saved.vehicle || {}) },
-      items: Array.isArray(saved.items) ? saved.items : structuredClone(defaultItems),
-      history: Array.isArray(saved.history) ? saved.history : []
-    };
+    return normalizeState(saved) || structuredClone(initialState);
   } catch {
     return structuredClone(initialState);
   }
 }
 
 function saveState(message) {
-  lastUpdatedAt = Date.now();
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  localStorage.setItem(SYNC_TIME_KEY, String(lastUpdatedAt));
+  state = normalizeState(state) || structuredClone(initialState);
+  lastUpdatedAt = lastUpdatedAt >= Number.MAX_SAFE_INTEGER ? 1 : Math.max(1, lastUpdatedAt + 1);
+  saveLocalCopy();
   if (message) showToast(message);
   render();
   scheduleCloudSave();
@@ -111,13 +168,9 @@ async function pullCloudState() {
 }
 
 function applyRemoteState(result) {
-  const remote = result.state;
-  if (!remote?.vehicle || !Array.isArray(remote.items) || !Array.isArray(remote.history)) return;
-  state = {
-    vehicle: { ...initialState.vehicle, ...remote.vehicle },
-    items: remote.items,
-    history: remote.history
-  };
+  const remote = normalizeState(result.state);
+  if (!remote) return;
+  state = remote;
   lastUpdatedAt = Number(result.updatedAt) || Date.now();
   saveLocalCopy();
   render();
@@ -162,7 +215,8 @@ function formatMoney(value) {
 
 function formatDate(date) {
   if (!date) return "";
-  return new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${date}T12:00:00`));
+  const value = new Date(`${date}T12:00:00`);
+  return Number.isNaN(value.getTime()) ? "" : new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(value);
 }
 
 function iconFor(category) {
@@ -173,14 +227,14 @@ function maintenanceMarkup(item) {
   const status = itemStatus(item);
   return `
     <article class="maintenance-item">
-      <span class="maintenance-icon" aria-hidden="true">${item.icon || iconFor(item.category)}</span>
+      <span class="maintenance-icon" aria-hidden="true">${escapeHtml(item.icon || iconFor(item.category))}</span>
       <div class="maintenance-copy">
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(status.detail)}</span>
       </div>
       <div class="maintenance-actions">
         <span class="status-pill ${status.key}">${status.label}</span>
-        <button class="done-button" type="button" data-complete="${item.id}">Update</button>
+        <button class="done-button" type="button" data-complete="${escapeHtml(item.id)}">Update</button>
       </div>
     </article>`;
 }
@@ -216,7 +270,7 @@ function render() {
   const total = state.history.reduce((sum, record) => sum + Number(record.cost || 0), 0);
   $("#totalSpend").textContent = formatMoney(total);
   $("#serviceCount").textContent = `${state.history.length} service record${state.history.length === 1 ? "" : "s"}`;
-  $("#historyList").innerHTML = state.history.length ? [...state.history].sort((a, b) => b.date.localeCompare(a.date)).map(historyMarkup).join("") : emptyMarkup("No history yet", "Completed maintenance will appear here.");
+  $("#historyList").innerHTML = state.history.length ? [...state.history].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).map(historyMarkup).join("") : emptyMarkup("No history yet", "Completed maintenance will appear here.");
 
   syncVehicleForms();
 }
@@ -315,6 +369,7 @@ $("#serviceForm").addEventListener("submit", event => {
   const data = new FormData(event.currentTarget);
   const item = state.items.find(entry => entry.id === data.get("itemId"));
   if (!item) return;
+  if (state.history.length >= 5_000) return showToast("History limit reached — export a backup before adding more.");
   const mileage = Math.max(0, Number(data.get("mileage")) || 0);
   item.lastDate = data.get("date");
   item.lastKm = mileage;
@@ -329,6 +384,7 @@ $("#itemForm").addEventListener("submit", event => {
   const data = new FormData(event.currentTarget);
   const name = String(data.get("name") || "").trim();
   if (!name) return;
+  if (state.items.length >= 250) return showToast("Checklist limit reached.");
   const category = data.get("category");
   state.items.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, name, category, icon: iconFor(category), intervalKm: Math.max(0, Number(data.get("intervalKm")) || 0), intervalMonths: Math.max(0, Number(data.get("intervalMonths")) || 0), lastKm: null, lastDate: null });
   closeModals();
@@ -356,8 +412,9 @@ $("#importData").addEventListener("change", async event => {
   if (!file) return;
   try {
     const imported = JSON.parse(await file.text());
-    if (!imported.vehicle || !Array.isArray(imported.items) || !Array.isArray(imported.history)) throw new Error("Invalid backup");
-    state = imported;
+    const normalized = normalizeState(imported);
+    if (!normalized) throw new Error("Invalid backup");
+    state = normalized;
     saveState("Backup imported");
   } catch {
     showToast("That backup file is not valid");
