@@ -1,5 +1,5 @@
-const CACHE = "pika-car-maint-v2";
-const ASSETS = ["./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "assets/icon-192.png", "assets/icon-512.png"];
+const CACHE = "pika-car-maint-v3";
+const ASSETS = ["./", "index.html", "styles.css", "app.js", "manifest.webmanifest", "assets/pika-car-maint-192.png", "assets/pika-car-maint-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting()));
