@@ -22,6 +22,20 @@ test('verified date and mileage schedule; unknown loan terms are not a zero bala
  assert.deepEqual(loanTotals(s),{paid:100,scheduled:1200,remaining:1100});
  s.loan.firstDate='2026-02-30';assert.equal(validState(s),false);
 });
+test('loan schedule includes a different final instalment without deriving payments from dates or rates',()=>{
+ const s=fixture();
+ Object.assign(s.loan,{monthly:100,months:12,finalInstalment:75.25,agreementTotal:1175.25,termCharges:100,rate:4,rateType:'variable',referenceRate:2.5,margin:1.5,documents:['a'.repeat(64)]});
+ assert.ok(validState(s));
+ assert.deepEqual(loanTotals(s),{paid:0,scheduled:1175.25,remaining:1175.25});
+ s.payments.push({id:'payment',date:'2026-11-01',amount:100,note:''});
+ assert.deepEqual(loanTotals(s),{paid:100,scheduled:1175.25,remaining:1075.25});
+ s.loan.months=1;assert.equal(loanTotals(s).scheduled,75.25);
+ s.loan.months=null;assert.equal(loanTotals(s).scheduled,null);
+ s.loan.months=12;s.loan.finalInstalment=null;assert.equal(loanTotals(s).scheduled,1200);
+ for(const [key,value] of [['finalInstalment',-1],['agreementTotal','1175'],['termCharges',Infinity],['referenceRate',101],['margin',-1],['rateType','unknown'],['documents',['invalid']]]){
+  const invalid=structuredClone(s);invalid.loan[key]=value;assert.equal(validState(invalid),false,key);
+ }
+});
 test('public access needs no password or session and still rejects cross-origin writes',async()=>{
  const env=environment();let called=false;
  const next=async()=>{called=true;return new Response('ok');};
@@ -45,6 +59,23 @@ test('D1 revision check rejects stale writers and invalid payloads',async()=>{
  assert.equal((await save({request:request('state','PUT',{state:s,revision:1}),env})).status,409);
  s.services[0].cost=-2;assert.equal((await save({request:request('state','PUT',{state:s,revision:1}),env})).status,400);
  assert.equal((await (await guard({request:new Request('https://garage.test/api/state'),env,next:()=>getState({env})})).json()).state.services[0].cost,268);
+});
+test('older clients retain loan agreement metadata and current clients can clear it explicitly',async()=>{
+ const env=environment(),s=fixture();
+ const terms={finalInstalment:75,agreementTotal:1175,termCharges:100,rateType:'variable',referenceRate:2.5,margin:1.5,documents:['a'.repeat(64)]};
+ Object.assign(s.loan,terms);
+ env.db.prepare('INSERT INTO app_state VALUES (?,?,?)').run('garage-v2',JSON.stringify(s),1);
+ const legacy=structuredClone(s);for(const key of Object.keys(terms))delete legacy.loan[key];
+ legacy.loan.notes='Updated by an older client';
+ assert.equal((await save({request:request('state','PUT',{state:legacy,revision:1}),env})).status,200);
+ let data=await (await getState({env})).json();
+ for(const [key,value] of Object.entries(terms))assert.deepEqual(data.state.loan[key],value);
+ assert.equal(data.state.loan.notes,legacy.loan.notes);
+ assert.equal((await save({request:request('state','PUT',{state:legacy,revision:1}),env})).status,409);
+ for(const key of Object.keys(terms))data.state.loan[key]=key==='documents'?[]:null;
+ assert.equal((await save({request:request('state','PUT',data),env})).status,200);
+ data=await (await getState({env})).json();
+ for(const key of Object.keys(terms))assert.deepEqual(data.state.loan[key],key==='documents'?[]:null);
 });
 test('public PDF upload validates signature, deduplicates bytes and supports download without cookies',async()=>{
  const env=environment(),bytes='%PDF-1.7\nTest PDF\n%%EOF';
