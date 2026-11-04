@@ -7,3 +7,82 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
 @media(max-width:600px){.car-illustration{min-width:280px;right:10px}}
+
+/* Options */
+.options-section{max-width:800px}
+.options-section>p:not(.eyebrow){margin-bottom:22px}
+.theme-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.theme-choice{padding:10px;text-align:left;border:2px solid var(--line);border-radius:12px;background:var(--white);color:var(--ink)}
+.theme-choice[aria-pressed="true"]{border-color:var(--green)}
+.theme-swatch{display:grid;grid-template-columns:25% 1fr 1fr;grid-template-rows:22px 1fr;gap:9px;height:110px;border-radius:7px;padding:12px;background:#f0f3eb;border:1px solid #dce4d7}
+.theme-swatch.dark{background:#101c1b;border-color:#3b5147}
+.swatch-nav{grid-row:1/-1;display:block;border-radius:4px;background:#d6e4c9}
+.swatch-card{grid-row:2;display:block;background:#fff;border-radius:4px}
+.theme-swatch.dark .swatch-nav{background:#294a3a}
+.theme-swatch.dark .swatch-card{background:#263b32}
+.theme-label{display:flex;justify-content:space-between;align-items:center;padding:13px 3px 2px;font-size:13px;font-weight:650}
+.theme-check{visibility:hidden;background:var(--green);color:#fff;border-radius:50%;height:19px;width:19px;text-align:center;font-size:12px;line-height:19px}
+.theme-choice[aria-pressed="true"] .theme-check{visibility:visible}
+.option-link{display:flex;align-items:center;gap:16px;width:100%;text-align:left;padding:18px;background:#eef3eb;color:var(--ink);border:1px solid var(--line);border-radius:10px}
+.option-link>span:nth-child(2){flex:1;min-width:0}
+.option-link strong{display:block;font-size:14px}
+.option-link small{display:block;margin-top:5px;font-size:11px;color:var(--muted);line-height:1.5}
+.option-icon{font-size:24px;color:var(--green)}
+.back-button{margin-bottom:20px}
+:root{color-scheme:light}
+dialog{background:var(--white)}
+
+/* Dark appearance */
+:root[data-theme="dark"]{
+ color-scheme:dark;
+ --ink:#e2eee7;
+ --muted:#a6bcb0;
+ --paper:#101c1b;
+ --white:#1a2a28;
+ --line:#354c43;
+ --green:#9bd5b9;
+ --mint:#263f32;
+ --yellow:#443c25;
+ --red:#ffb5a6;
+ --shadow:0 6px 24px #00000020;
+}
+[data-theme="dark"] .primary{background:#9bd5b9;color:#112a20}
+[data-theme="dark"] .primary:hover{background:#b7e5cb}
+[data-theme="dark"] .secondary,
+[data-theme="dark"] .option-link{background:#243b32;color:var(--ink)}
+[data-theme="dark"] .sidebar{background:#162320}
+[data-theme="dark"] .sidebar nav button.active{background:#294a3a;color:#c1e5cf}
+[data-theme="dark"] .metric.mint{border-color:#3d5944}
+[data-theme="dark"] .pill{background:#293f32;color:#c1d9c5}
+[data-theme="dark"] .pill.good{background:#294532;color:#b4dab9}
+[data-theme="dark"] .pill.warning{background:#493c24;color:#f1d18a}
+[data-theme="dark"] .pill.danger{background:#4c2e29;color:#ffbcaa}
+[data-theme="dark"] .pill.light{background:#ffffff16;color:#d7e5d2}
+[data-theme="dark"] .or{color:#afc1b5}
+[data-theme="dark"] .callout{background:#303a28;color:#c5d0ad}
+[data-theme="dark"] .source{color:#add1bc}
+[data-theme="dark"] .rows>div{border-color:var(--line)}
+[data-theme="dark"] .empty{border-color:#526a5b}
+[data-theme="dark"] .pdf-icon{background:#433329;color:#e6bb99;border-color:#71523c}
+[data-theme="dark"] .lock-screen{background:radial-gradient(ellipse at top right,#243c2e,transparent 60%),var(--paper)}
+[data-theme="dark"] label{color:#bed0c4}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea{background:#14221e;border-color:#496455;color:var(--ink)}
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder{color:#9db1a4;opacity:1}
+[data-theme="dark"] input:focus,
+[data-theme="dark"] select:focus,
+[data-theme="dark"] textarea:focus,
+[data-theme="dark"] button:focus-visible,
+[data-theme="dark"] a:focus-visible{outline-color:#a2d9bd}
+[data-theme="dark"] #notice{background:#d8e9d9;color:#152b20}
+[data-theme="dark"] footer{color:#a6b9ac}
+[data-theme="dark"] .theme-check{color:#112a20}
+@media(max-width:600px){
+ .theme-options{gap:10px}
+ .theme-swatch{height:100px;padding:9px;gap:6px}
+ .option-link{padding:15px;gap:12px}
+ [data-theme="dark"] .sidebar{background:#162320f5}
+ [data-theme="dark"] .sidebar nav button.active{background:transparent;color:#b7dfc7;border-top-color:#9bd5b9}
+}

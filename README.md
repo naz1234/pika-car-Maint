@@ -12,7 +12,8 @@ Production: https://pika-car-maint.pages.dev
 - Purchase breakdown separate from the bank repayment log.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
-- Private PDF library with categories, search, upload, SHA-256 deduplication and authenticated downloads.
+- Options tab with a private PDF library, categories, search, upload, SHA-256 deduplication and authenticated downloads.
+- Light and dark modes, remembered on each device and applied before the first paint, including the lock screen.
 - Installable app. Only the static shell is cached; private data and PDFs are never cached by the service worker.
 - JSON export of state and document metadata.
 

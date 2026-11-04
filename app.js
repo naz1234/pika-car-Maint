@@ -5,8 +5,7 @@ const number=n=>new Intl.NumberFormat('en-MY').format(n);
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const date=s=>s?new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(s)):'Not provided';
 let state,revision,documents=[],view='overview',editing,busy=false,deferredInstall;
-const navLabels={overview:'Overview',maintenance:'Maintenance',loan:'Loan & purchase',documents:'Documents',car:'My car'};
-const icon={overview:'⌂',maintenance:'⚙',loan:'◴',documents:'▤',car:'◇'};
+const navLabels={overview:'Overview',maintenance:'Maintenance',loan:'Loan & purchase',documents:'Options / Documents',car:'My car',options:'Options'};
 function notify(text){$('#notice').textContent=text;$('#notice').hidden=false;clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('#notice').hidden=true,6000);}
 async function api(path,options={}){
  let response;
@@ -48,7 +47,8 @@ function render(){
  if(!state)return;
  const total=state.services.reduce((sum,x)=>sum+x.cost,0),loan=loanTotals(state);
  const sorted=[...state.services].sort((a,b)=>b.date.localeCompare(a.date));
- document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-current',b.dataset.view===view?'page':'false');});
+ const activeTab=view==='documents'?'options':view;
+ document.querySelectorAll('.sidebar nav [data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===activeTab);b.setAttribute('aria-current',b.dataset.view===activeTab?'page':'false');});
  $('#breadcrumb').textContent='Your garage / '+navLabels[view];
  $('#syncStatus').textContent='Saved '+new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(revision));
  let content='';
@@ -74,8 +74,14 @@ function render(){
   '<div class="section-title spaced"><h2>Repayment log</h2><button class="secondary" data-edit="payment">＋ Record a payment</button></div>'+
   (state.payments.length?'<div class="card">'+[...state.payments].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>'<div class="payment-row"><div><strong>'+date(p.date)+'</strong><p>'+esc(p.note)+'</p></div><strong>'+money(p.amount)+'</strong></div>').join('')+'</div>':empty('No bank repayments recorded','The dealer’s purchase receipt is separate from your monthly bank repayments.'));
  }
+ if(view==='options'){
+  content=heading('MAKE IT YOURS','Options','Choose your appearance and find your documents.')+
+  '<section class="card options-section" aria-labelledby="appearanceTitle"><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">Light or dark, your choice.</h2><p>Choose a look for this device. Your choice is remembered.</p><div class="theme-options" role="group" aria-label="Colour mode">'+
+  ['light','dark'].map(theme=>'<button class="theme-choice" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(window.PikaTheme.get()===theme)+'"><span class="theme-swatch '+theme+'" aria-hidden="true"><span class="swatch-nav"></span><span class="swatch-card"></span><span class="swatch-card"></span></span><span class="theme-label">'+(theme==='light'?'☀ Light':'☾ Dark')+'<span class="theme-check" aria-hidden="true">✓</span></span></button>').join('')+
+  '</div></section><section class="card options-section spaced" aria-labelledby="optionsDocumentsTitle"><p class="eyebrow">DOCUMENTS</p><h2 id="optionsDocumentsTitle">Your paperwork, close by.</h2><p>Open your receipts, invoices and purchase documents, or add a new PDF.</p><button class="option-link" type="button" data-view="documents"><span class="option-icon" aria-hidden="true">▤</span><span><strong>Document library</strong><small>'+documents.length+' unique PDFs · securely stored</small></span><span aria-hidden="true">↗</span></button></section>';
+ }
  if(view==='documents'){
-  content=heading('THE PAPER TRAIL','Your document library','Original PDFs, ready whenever you need them.','<button class="primary" data-edit="upload">＋ Add a PDF</button>')+
+  content='<button class="text-button back-button" data-view="options" type="button">← Back to Options</button>'+heading('THE PAPER TRAIL','Your document library','Original PDFs, ready whenever you need them.','<button class="primary" data-edit="upload">＋ Add a PDF</button>')+
   '<div class="callout">PDFs are stored privately. Matching files are detected automatically. Uploading a new PDF stores it here; add its details to the service or repayment log separately.</div>'+
   '<div class="document-tools"><label>Find a document<input type="search" id="documentSearch" placeholder="Search filename or category"></label><label>Category<select id="documentCategory"><option>All</option><option>Service</option><option>Purchase</option><option>Loan</option><option>Other</option></select></label></div><div id="documentList" class="document-grid"></div>';
  }
@@ -83,7 +89,7 @@ function render(){
   const v=state.vehicle;
   content=heading('YOUR GARAGE','Car details','Keep the mileage current for useful service reminders.','<button class="primary" data-edit="vehicle">Edit car details ↗</button>')+
   '<section class="card"><p class="eyebrow">VEHICLE PROFILE</p><h2>'+esc(v.name)+'</h2><dl class="rows">'+[['Model',v.model],['Registration',v.plate],['Colour',v.colour],['VIN',v.vin],['Last recorded mileage',number(v.odometer)+' km'],['Mileage recorded on',date(v.odometerDate)]].map(([k,val])=>'<div><dt>'+k+'</dt><dd>'+esc(val)+'</dd></div>').join('')+'</dl></section>'+
-  '<section class="card spaced"><h2>Your data, together.</h2><p>Changes save to your private garage and are available on your other devices after unlocking. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Download original PDFs from the Documents page.</p></section>';
+  '<section class="card spaced"><h2>Your data, together.</h2><p>Changes save to your private garage and are available on your other devices after unlocking. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Download original PDFs from Options → Document library.</p></section>';
  }
  $('#content').innerHTML=content;if(view==='documents')renderDocuments();
 }
@@ -136,6 +142,7 @@ $('#editorForm').addEventListener('submit',async e=>{
  }catch(error){const box=$('#formError');if(box)box.textContent=error.message;else notify(error.message);}finally{e.target.querySelector('button[type=submit]')?.removeAttribute('disabled');}
 });
 document.addEventListener('click',async e=>{
+ const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
  const go=e.target.closest('[data-view]');if(go){view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
@@ -149,6 +156,9 @@ document.addEventListener('click',async e=>{
   }
   if(action==='install'&&deferredInstall){await deferredInstall.prompt();deferredInstall=null;$('#install').hidden=true;}
  }catch(error){notify(error.message);}
+});
+window.addEventListener('pika-theme-change',()=>{
+ document.querySelectorAll('[data-theme-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.themeChoice===window.PikaTheme.get())));
 });
 document.addEventListener('input',e=>{if(e.target.id==='documentSearch')renderDocuments();});
 document.addEventListener('change',e=>{if(e.target.id==='documentCategory')renderDocuments();});
