@@ -11,7 +11,7 @@ const number=n=>new Intl.NumberFormat('en-MY').format(n);
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const date=s=>s?new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(s)):'Not provided';
 let state,revision,documents=[],view='overview',editing,busy=false,deferredInstall,fuelMonth='',editingFuelId=null;
-const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel consumption',loan:'Loan & purchase',documents:'Overview / Options / Documents',car:'My car',options:'Overview / Options'};
+const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel consumption',loan:'Loan & purchase',documents:'Overview / Options / Documents',car:'Overview / My car',options:'Overview / Options'};
 function notify(text){$('#notice').textContent=text;$('#notice').hidden=false;clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('#notice').hidden=true,6000);}
 async function api(path,options={}){
  let response;
@@ -119,7 +119,7 @@ function renderOverview(total,sorted,loan){
  const days=status.days==null?'Date not set':status.days<0?number(-status.days)+' days overdue':status.days===0?'Due today':number(status.days)+' days away';
  const stat=(symbol,label,value,copy,attributes)=>'<button class="overview-stat" type="button" '+attributes+'><span class="overview-stat-top"><span class="overview-icon">'+icon(symbol)+'</span><span>'+label+'</span>'+icon('arrow')+'</span><strong>'+value+'</strong><small>'+copy+'</small></button>';
  return `<div class="overview">
-  <div class="page-head overview-heading"><div><p class="eyebrow">A LITTLE CARE. MANY MORE MILES.</p><h1>Your car, at a glance.</h1><p>Everything you need for the road ahead.</p></div><div class="overview-heading-actions"><button class="secondary" type="button" data-view="options">${icon('options')} Options</button><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log a service</button></div></div>
+  <div class="page-head overview-heading"><div><p class="eyebrow">A LITTLE CARE. MANY MORE MILES.</p><h1>Your car, at a glance.</h1><p>Everything you need for the road ahead.</p></div><div class="overview-heading-actions"><button class="secondary" type="button" data-view="car">${icon('car')} My car</button><button class="secondary" type="button" data-view="options">${icon('options')} Options</button><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log a service</button></div></div>
   <div class="overview-top">
    <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
     <div class="vehicle-card-top"><span class="eyebrow">IN YOUR GARAGE</span><span class="registration">${esc(v.plate||'Registration not provided')}</span></div>
@@ -160,7 +160,7 @@ function render(){
  if(!state)return;
  const total=state.services.reduce((sum,x)=>sum+x.cost,0),loan=loanTotals(state);
  const sorted=[...state.services].sort((a,b)=>b.date.localeCompare(a.date));
- const activeTab=['options','documents'].includes(view)?'overview':view;
+ const activeTab=['car','options','documents'].includes(view)?'overview':view;
  document.querySelectorAll('.sidebar nav [data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===activeTab);b.setAttribute('aria-current',b.dataset.view===activeTab?'page':'false');});
  $('#breadcrumb').textContent='Your garage / '+navLabels[view];
  $('#syncStatus').textContent='Saved '+new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(revision));
@@ -198,7 +198,7 @@ function render(){
  }
  if(view==='car'){
   const v=state.vehicle;
-  content=heading('YOUR GARAGE','Car details','Keep the mileage current for useful service reminders.','<button class="primary" data-edit="vehicle">Edit car details ↗</button>')+
+  content='<button class="text-button back-button" data-view="overview" type="button">← Back to Overview</button>'+heading('YOUR GARAGE','Car details','Keep the mileage current for useful service reminders.','<button class="primary" data-edit="vehicle">Edit car details ↗</button>')+
   '<section class="card"><p class="eyebrow">VEHICLE PROFILE</p><h2>'+esc(v.name)+'</h2><dl class="rows">'+[['Model',v.model],['Registration',v.plate],['Colour',v.colour],['VIN',v.vin],['Last recorded mileage',number(v.odometer)+' km'],['Mileage recorded on',date(v.odometerDate)]].map(([k,val])=>'<div><dt>'+k+'</dt><dd>'+esc(val)+'</dd></div>').join('')+'</dl></section>'+
   '<section class="card spaced"><h2>Your data, together.</h2><p>This garage is public. Anyone with the link can view and update the records. Changes save across devices. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Open original PDFs from Options → Document library.</p></section>';
  }
