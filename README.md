@@ -8,15 +8,15 @@ Production: https://pika-car-maint.pages.dev
 
 - Fuel tab with editable fill-ups, monthly spending, transaction counts and averages. Receipt litres, odometer and full-tank status are optional; unknown readings stay unknown.
 - Fuel economy (km/L and L/100 km) uses complete full-to-full intervals, including intervening partial fills. Missing litres or backwards mileage break the measurement chain. Monthly economy uses intervals ending in that month, which can span a month boundary.
-- Overview with documented mileage, maintenance cost and original financed amount.
-- Compact Maintenance recorded row opens the total, visit count and individual service costs in a popup. Open any service for its full record/PDFs, or go to Maintenance and log a new visit.
-- Compact car profile row at the top of Overview. Tap for the full model, registration, colour, VIN and recorded mileage, with editing and access to My car in the popup.
+- Overview dashboard with an illustrated vehicle card, documented mileage, a prominent date/mileage service reminder, monthly fuel spending, recent maintenance and purchase financing. Quick actions open service, fill-up, mileage and document forms. The current-month fuel shortcut also works before the first fill-up is logged.
+- Maintenance recorded opens the total, visit count and individual service costs in a popup. Open any service for its full record/PDFs, or go to Maintenance and log a new visit.
+- Vehicle card at the top of Overview. Open Car details for the full model, registration, colour, VIN and recorded mileage, with editing and access to My car in the popup.
 - Compact service rows show the date, mileage, title and cost. Tap a row for a popup with the full work notes, parts and source PDFs; PDF Back returns to those details.
 - Explicit next-service date and odometer target; whichever comes first.
-- Next service stays in a compact row on Overview and Maintenance. Tap for the full date/mileage schedule, status, workshop notes, supporting PDF and edit option in a popup.
+- Overview highlights both next-service targets, days to the date and distance from the last recorded mileage. Maintenance keeps a compact schedule row. Both open the full date/mileage schedule, status, workshop notes, supporting PDF and edit option in a popup.
 - Purchase breakdown separate from the bank repayment log.
-- Compact Original loan amount row opens the purchase financing, price breakdown, receipt notes and supporting PDFs. PDF Back returns to those details, with a link to Loan & purchase.
-- Compact Loan snapshot row opens a popup with the original loan amount, lender, monthly instalment, next payment date and repayments logged, plus a link to Loan & purchase.
+- Overview's Purchase & loan panel opens the original financing, price breakdown, receipt notes and supporting PDFs. PDF Back returns to those details, with a link to Loan & purchase.
+- Repayments logged opens the loan snapshot with the original loan amount, lender, monthly instalment, next payment date and repayments logged, plus a link to Loan & purchase.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
 - Options tab with a public PDF library, categories, search, upload, SHA-256 deduplication and document viewing.

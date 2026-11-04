@@ -103,6 +103,49 @@ function openLoanSnapshot(){
 function serviceRow(s){
  return '<button class="service-row" type="button" data-service="'+esc(s.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(s.date)+' · '+number(s.mileage)+' km</span><strong>'+esc(s.title)+'</strong></span><strong class="service-row-cost">'+money(s.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
 }
+function renderOverview(total,sorted,loan){
+ const v=state.vehicle,schedule=state.nextService,status=serviceStatus(state,today());
+ const month=today().slice(0,7),fuel=fuelSummary(state.fuelEntries||[],month);
+ const icon=(name)=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({
+  service:'<path d="m14 6 4-4a6 6 0 0 1-7 8L5 16a2.1 2.1 0 0 0 3 3l6-6a6 6 0 0 0 8-7l-4 4z"/>',
+  fuel:'<path d="M4 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17M3 21h12M4 10h10M7 6h4M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0V9l-4-4M19 6v4h3"/>',
+  document:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h4"/>',
+  calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18m-13 5 3 3 5-5"/>',
+  car:'<path d="m5 8 2-5h10l2 5 2 3v7H3v-7zM5 8h14M3 14h18M6 18v3m12-3v3M6 11h2m8 0h2"/>',
+  arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>'
+ }[name]||'')+'</svg>';
+ const distance=status.km==null?'Add a mileage target':status.km<0?number(-status.km)+' km past the mileage target':status.km===0?'Mileage target reached':number(status.km)+' km to the mileage target';
+ const days=status.days==null?'Date not set':status.days<0?number(-status.days)+' days overdue':status.days===0?'Due today':number(status.days)+' days away';
+ const stat=(symbol,label,value,copy,attributes)=>'<button class="overview-stat" type="button" '+attributes+'><span class="overview-stat-top"><span class="overview-icon">'+icon(symbol)+'</span><span>'+label+'</span>'+icon('arrow')+'</span><strong>'+value+'</strong><small>'+copy+'</small></button>';
+ return `<div class="overview">
+  <div class="page-head overview-heading"><div><p class="eyebrow">A LITTLE CARE. MANY MORE MILES.</p><h1>Your car, at a glance.</h1><p>Everything you need for the road ahead.</p></div><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log a service</button></div>
+  <div class="overview-top">
+   <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
+    <div class="vehicle-card-top"><span class="eyebrow">IN YOUR GARAGE</span><span class="registration">${esc(v.plate||'Registration not provided')}</span></div>
+    <h2 id="overviewVehicleTitle">${esc(v.name)}</h2><p class="vehicle-model">${esc(v.model)}</p>
+    <img class="overview-car-art" src="/assets/garage-car.svg" alt="" width="600" height="230">
+    <div class="vehicle-card-bottom"><div><span>Recorded mileage</span><strong>${number(v.odometer)} <small>km</small></strong><small>As at ${date(v.odometerDate)}</small></div><button data-action="car-profile" class="vehicle-details" aria-haspopup="dialog">Car details ${icon('arrow')}</button></div>
+   </section>
+   <section class="overview-schedule" aria-labelledby="overviewScheduleTitle">
+    <div class="schedule-top"><span class="overview-icon">${icon('calendar')}</span><span class="pill ${status.tone}">${status.label}</span></div>
+    <p class="eyebrow">NEXT UP</p><h2 id="overviewScheduleTitle">A little care goes a long way.</h2>
+    <div class="schedule-targets"><div><span>By date</span><strong>${schedule.date?date(schedule.date):'Not set'}</strong><small>${days}</small></div><span class="schedule-or">or</span><div><span>By odometer</span><strong>${schedule.mileage==null?'Not set':number(schedule.mileage)+' <small>km</small>'}</strong><small>Whichever comes first</small></div></div>
+    <div class="schedule-distance">${icon('car')}<span>${distance}<small>Based on your last recorded mileage</small></span></div>
+    <button class="overview-card-link" data-action="next-service" aria-haspopup="dialog">View service schedule ${icon('arrow')}</button>
+   </section>
+  </div>
+  <div class="overview-stats" aria-label="Garage summary">
+   ${stat('service','Maintenance recorded',money(total),state.services.length+' service '+(state.services.length===1?'visit':'visits')+' · all time','data-action="maintenance-recorded" aria-haspopup="dialog"')}
+   ${stat('fuel','Fuel this month',money(fuel.total),monthLabel(month)+' · '+fuel.count+' '+(fuel.count===1?'fill-up':'fill-ups'),'data-view="fuel" data-current-fuel')}
+   ${stat('document','Document library',documents.length+' <small>PDFs</small>','Original documents, all together','data-view="documents"')}
+  </div>
+  <div class="overview-bottom">
+   <section class="overview-activity" aria-labelledby="overviewActivityTitle"><div class="overview-section-head"><div><p class="eyebrow">THE CARE JOURNAL</p><h2 id="overviewActivityTitle">Recent maintenance</h2></div><button class="text-button" data-view="maintenance">View all ${icon('arrow')}</button></div>${sorted.length?'<div class="service-list">'+sorted.slice(0,2).map(serviceRow).join('')+'</div>':empty('Your story starts here','Log your first service to start your car’s care journal.')}<div class="overview-journal-note">${icon('service')}<span>A well-kept history for the miles ahead.</span></div></section>
+   <section class="overview-finance" aria-labelledby="overviewFinanceTitle"><div class="overview-section-head"><div><p class="eyebrow">THE FINANCIAL PICTURE</p><h2 id="overviewFinanceTitle">Purchase & loan</h2></div></div><button class="finance-principal" data-action="original-loan" aria-haspopup="dialog"><span>Original loan amount ${icon('arrow')}</span><strong>${money(state.purchase.principal)}</strong><small>From your purchase order</small></button><button class="finance-repayments" data-action="loan-snapshot" aria-haspopup="dialog"><span>Repayments logged<strong>${money(loan.paid)}</strong></span>${icon('arrow')}</button><button class="overview-card-link" data-view="loan">See loan & purchase ${icon('arrow')}</button></section>
+  </div>
+  <div class="overview-shortcuts" role="group" aria-label="Quick actions"><span>Keep things up to date</span><button data-edit="fuel">${icon('fuel')} Log a fill-up</button><button data-edit="vehicle">${icon('car')} Update mileage</button><button data-edit="upload">${icon('document')} Add a document</button></div>
+ </div>`;
+}
 function openService(id){
  const s=state?.services.find(item=>item.id===id);if(!s)return;
  $('#serviceTitle').textContent=s.title;
@@ -123,11 +166,7 @@ function render(){
  let content='';
  if(view==='fuel')content=renderFuel();
  if(view==='overview'){
-  content=heading('THE ROAD AHEAD','Everything in one place.','A clear picture of your car, its care and its costs.')+
-  '<div class="overview-rows">'+carProfileRow()+maintenanceRecordedRow(total)+originalLoanRow()+'</div>'+
-  '<div class="metrics two">'+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · publicly accessible')+'</div>'+
-  '<div class="two-col"><div>'+nextServiceRow()+'</div><div>'+loanSnapshotRow()+'</div></div>'+
-  '<div class="section-title spaced"><h2>Latest maintenance</h2><button data-view="maintenance" class="text-button">View history ↗</button></div>'+(sorted[0]?'<div class="service-list">'+serviceRow(sorted[0])+'</div>':empty('Start your service history','Log your first maintenance visit.'));
+  content=renderOverview(total,sorted,loan);
  }
  if(view==='maintenance'){
   content=heading('CARE THAT COUNTS','Maintenance','Workshop records, clear costs and your next visit.','<button class="primary" data-edit="service">＋ Log a service</button>')+
@@ -176,6 +215,8 @@ function documentSelect(selected=''){return '<label>Supporting PDF (optional)<se
 function monthLabel(month){return month==='all'?'All months':new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01'));}
 function renderFuel(){
  const entries=state.fuelEntries||[],months=fuelMonths(entries);
+ // The Overview shortcut can open the current month before its first fill-up.
+ if(fuelMonth===today().slice(0,7)&&!months.includes(fuelMonth))months.unshift(fuelMonth);
  if(!fuelMonth || (fuelMonth!=='all'&&!months.includes(fuelMonth)))fuelMonth=months[0]||'all';
  const summary=fuelSummary(entries,fuelMonth),selected=entries.filter(e=>fuelMonth==='all'||e.date.startsWith(fuelMonth+'-')).sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
  const decimal=n=>new Intl.NumberFormat('en-MY',{maximumFractionDigits:2}).format(n);
@@ -239,7 +280,7 @@ document.addEventListener('click',async e=>{
  const service=e.target.closest('[data-service]');if(service){openService(service.dataset.service);return;}
  const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
- const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}view=go.dataset.view;render();window.scrollTo({top:0});}
+ const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}if(go.hasAttribute('data-current-fuel'))fuelMonth=today().slice(0,7);view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
  try{
