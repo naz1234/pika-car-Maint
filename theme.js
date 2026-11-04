@@ -7,7 +7,7 @@
     current = theme === 'dark' ? 'dark' : 'light';
     document.documentElement.dataset.theme = current;
     document.documentElement.style.colorScheme = current;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', current === 'dark' ? '#101c1b' : '#f6f7f3');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', current === 'dark' ? '#171115' : '#f8f2f3');
     window.dispatchEvent(new CustomEvent('pika-theme-change'));
   }
 
