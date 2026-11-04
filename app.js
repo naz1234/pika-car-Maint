@@ -56,6 +56,16 @@ function openNextService(){
  if(!state)return;
  renderNextServiceDetails();$('#nextServiceBody').scrollTop=0;$('#nextServiceDetails').showModal();
 }
+function loanSnapshotRow(){
+ const monthly=state.loan.monthly==null?'Monthly instalment not provided':money(state.loan.monthly)+' / month';
+ return '<div class="service-list"><button class="service-row" type="button" data-action="loan-snapshot" aria-haspopup="dialog"><span class="service-row-main"><strong>Loan snapshot</strong><span class="service-row-date">'+monthly+'</span></span><span class="loan-row-total"><strong>'+money(loanTotals(state).paid)+'</strong><small>Repayments logged</small></span><span class="service-row-arrow" aria-hidden="true">›</span></button></div>';
+}
+function openLoanSnapshot(){
+ if(!state)return;
+ const loan=loanTotals(state);
+ $('#loanSnapshotBody').innerHTML='<dl class="rows"><div><dt>Original loan amount</dt><dd>'+money(state.purchase.principal)+'</dd></div><div><dt>Lender</dt><dd>'+esc(state.loan.lender||'Not provided')+'</dd></div><div><dt>Monthly instalment</dt><dd>'+money(state.loan.monthly)+'</dd></div><div><dt>Next payment date</dt><dd>'+date(state.loan.nextDate)+'</dd></div><div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div></dl><p class="footnote">Bank balance and repayment status are not available from the purchase PDFs. Repayments logged include only the bank payments you record.</p><button data-view="loan" class="secondary">See loan & purchase ↗</button>';
+ $('#loanSnapshotBody').scrollTop=0;$('#loanSnapshotDetails').showModal();
+}
 function serviceRow(s){
  return '<button class="service-row" type="button" data-service="'+esc(s.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(s.date)+' · '+number(s.mileage)+' km</span><strong>'+esc(s.title)+'</strong></span><strong class="service-row-cost">'+money(s.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
 }
@@ -81,7 +91,7 @@ function render(){
   content=heading('THE ROAD AHEAD','Everything in one place.','A clear picture of your car, its care and its costs.')+
   '<section class="hero"><div><span class="pill light">YOUR CAR</span><h2>'+esc(state.vehicle.name)+'</h2><p>'+esc(state.vehicle.model)+'</p><div class="hero-tags"><span>'+esc(state.vehicle.plate)+'</span><span>'+esc(state.vehicle.colour)+'</span></div><button data-view="car" class="hero-link">View car details ↗</button></div><div class="car-illustration" aria-hidden="true"><div class="car-roof"></div><div class="car-body"><span></span><i></i></div><div class="wheel one"></div><div class="wheel two"></div><div class="road"></div></div></section>'+
   '<div class="metrics">'+metric('Maintenance recorded',money(total),state.services.length+' service visits','mint')+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · publicly accessible')+'</div>'+
-  '<div class="two-col"><div>'+nextServiceRow()+'</div><section class="card loan-preview"><p class="eyebrow">LOAN SNAPSHOT</p><h2>Know where you stand.</h2><dl class="rows"><div><dt>Monthly instalment</dt><dd>'+money(state.loan.monthly)+'</dd></div><div><dt>Lender</dt><dd>'+esc(state.loan.lender||'Not provided')+'</dd></div><div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div></dl><p class="muted">Bank balance and repayment status are not available from the purchase PDFs.</p><button data-view="loan" class="secondary">See loan & purchase ↗</button></section></div>'+
+  '<div class="two-col"><div>'+nextServiceRow()+'</div><div>'+loanSnapshotRow()+'</div></div>'+
   '<div class="section-title spaced"><h2>Latest maintenance</h2><button data-view="maintenance" class="text-button">View history ↗</button></div>'+(sorted[0]?'<div class="service-list">'+serviceRow(sorted[0])+'</div>':empty('Start your service history','Log your first maintenance visit.'));
  }
  if(view==='maintenance'){
@@ -166,7 +176,7 @@ document.addEventListener('click',async e=>{
  const service=e.target.closest('[data-service]');if(service){openService(service.dataset.service);return;}
  const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
- const go=e.target.closest('[data-view]');if(go){view=go.dataset.view;render();window.scrollTo({top:0});}
+ const go=e.target.closest('[data-view]');if(go){if($('#loanSnapshotDetails').open)$('#loanSnapshotDetails').close();view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
  try{
@@ -174,6 +184,8 @@ document.addEventListener('click',async e=>{
   if(action==='close-service')$('#serviceDetails').close();
   if(action==='next-service')openNextService();
   if(action==='close-next-service')$('#nextServiceDetails').close();
+  if(action==='loan-snapshot')openLoanSnapshot();
+  if(action==='close-loan-snapshot')$('#loanSnapshotDetails').close();
   if(action==='refresh'){await load();notify('Latest records loaded');}
   if(action==='export'){
    const blob=new Blob([JSON.stringify({state,documents,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});

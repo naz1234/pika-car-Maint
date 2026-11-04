@@ -18,8 +18,11 @@ button.source{background:none;text-align:left;line-height:1.5}
 .service-row-main strong{font-size:14px;line-height:1.5;overflow-wrap:anywhere}
 .service-row-cost{font-size:14px;white-space:nowrap}
 .service-row-arrow{font-size:23px;color:var(--muted)}
-#serviceDetails,#nextServiceDetails{width:min(620px,calc(100% - 24px));max-height:84svh;padding:0;overflow:hidden}
-#serviceDetails[open],#nextServiceDetails[open]{display:flex;flex-direction:column}
+#serviceDetails,#nextServiceDetails,#loanSnapshotDetails{width:min(620px,calc(100% - 24px));max-height:84svh;padding:0;overflow:hidden}
+#serviceDetails[open],#nextServiceDetails[open],#loanSnapshotDetails[open]{display:flex;flex-direction:column}
+.loan-row-total{display:grid;gap:4px;text-align:right;white-space:nowrap}
+.loan-row-total strong{font-size:14px}
+.loan-row-total small{font-size:9px;color:var(--muted)}
 .next-service-row .service-row-date{line-height:1.5}
 #nextServiceBody .next-grid{margin-top:20px}
 .service-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px;border-bottom:1px solid var(--line);flex:none}
