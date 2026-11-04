@@ -7,6 +7,7 @@ Production: https://pika-car-maint.pages.dev
 ## Features
 
 - Overview with documented mileage, maintenance cost and original financed amount.
+- Compact Maintenance recorded row opens the total, visit count and individual service costs in a popup. Open any service for its full record/PDFs, or go to Maintenance and log a new visit.
 - Compact car profile row at the top of Overview. Tap for the full model, registration, colour, VIN and recorded mileage, with editing and access to My car in the popup.
 - Compact service rows show the date, mileage, title and cost. Tap a row for a popup with the full work notes, parts and source PDFs; PDF Back returns to those details.
 - Explicit next-service date and odometer target; whichever comes first.

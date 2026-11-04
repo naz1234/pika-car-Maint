@@ -56,6 +56,17 @@ function openCarProfile(){
  if(!state)return;
  renderCarProfileDetails();$('#carProfileBody').scrollTop=0;$('#carProfileDetails').showModal();
 }
+function maintenanceRecordedRow(total){
+ return '<div class="service-list"><button class="service-row" type="button" data-action="maintenance-recorded" aria-haspopup="dialog"><span class="service-row-main"><strong>Maintenance recorded</strong><span class="service-row-date">'+state.services.length+' service visits</span></span><strong class="service-row-cost">'+money(total)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button></div>';
+}
+function renderMaintenanceRecordedDetails(){
+ const total=state.services.reduce((sum,s)=>sum+s.cost,0),sorted=[...state.services].sort((a,b)=>b.date.localeCompare(a.date));
+ $('#maintenanceRecordedBody').innerHTML='<div class="service-detail-meta"><span>'+state.services.length+' service visits</span><strong>'+money(total)+'</strong></div><p class="footnote">Total of the service costs you record, including no-charge visits.</p><section><h3>Service costs</h3>'+(sorted.length?'<div class="service-list">'+sorted.map(serviceRow).join('')+'</div>':empty('No service visits yet','Log a service to start your maintenance history.'))+'</section><div class="profile-actions"><button class="secondary" data-view="maintenance">See maintenance ↗</button><button class="text-button" data-edit="service">Log a service ↗</button></div>';
+}
+function openMaintenanceRecorded(){
+ if(!state)return;
+ renderMaintenanceRecordedDetails();$('#maintenanceRecordedBody').scrollTop=0;$('#maintenanceRecordedDetails').showModal();
+}
 function nextServiceRow(){
  const s=serviceStatus(state,today());
  const due=[state.nextService.date?date(state.nextService.date):null,state.nextService.mileage==null?null:number(state.nextService.mileage)+' km'].filter(Boolean).join(' or ')||'Schedule not provided';
@@ -102,8 +113,8 @@ function render(){
  let content='';
  if(view==='overview'){
   content=heading('THE ROAD AHEAD','Everything in one place.','A clear picture of your car, its care and its costs.')+
-  carProfileRow()+
-  '<div class="metrics">'+metric('Maintenance recorded',money(total),state.services.length+' service visits','mint')+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · publicly accessible')+'</div>'+
+  '<div class="overview-rows">'+carProfileRow()+maintenanceRecordedRow(total)+'</div>'+
+  '<div class="metrics three">'+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · publicly accessible')+'</div>'+
   '<div class="two-col"><div>'+nextServiceRow()+'</div><div>'+loanSnapshotRow()+'</div></div>'+
   '<div class="section-title spaced"><h2>Latest maintenance</h2><button data-view="maintenance" class="text-button">View history ↗</button></div>'+(sorted[0]?'<div class="service-list">'+serviceRow(sorted[0])+'</div>':empty('Start your service history','Log your first maintenance visit.'));
  }
@@ -189,7 +200,7 @@ document.addEventListener('click',async e=>{
  const service=e.target.closest('[data-service]');if(service){openService(service.dataset.service);return;}
  const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
- const go=e.target.closest('[data-view]');if(go){if($('#loanSnapshotDetails').open)$('#loanSnapshotDetails').close();if($('#carProfileDetails').open)$('#carProfileDetails').close();view=go.dataset.view;render();window.scrollTo({top:0});}
+ const go=e.target.closest('[data-view]');if(go){if($('#loanSnapshotDetails').open)$('#loanSnapshotDetails').close();if($('#carProfileDetails').open)$('#carProfileDetails').close();if($('#maintenanceRecordedDetails').open)$('#maintenanceRecordedDetails').close();view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
  try{
@@ -201,6 +212,8 @@ document.addEventListener('click',async e=>{
   if(action==='close-loan-snapshot')$('#loanSnapshotDetails').close();
   if(action==='car-profile')openCarProfile();
   if(action==='close-car-profile')$('#carProfileDetails').close();
+  if(action==='maintenance-recorded')openMaintenanceRecorded();
+  if(action==='close-maintenance-recorded')$('#maintenanceRecordedDetails').close();
   if(action==='refresh'){await load();notify('Latest records loaded');}
   if(action==='export'){
    const blob=new Blob([JSON.stringify({state,documents,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
@@ -218,6 +231,7 @@ $('#editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
 $('#editor').addEventListener('close',()=>{
  if($('#nextServiceDetails').open){renderNextServiceDetails();$('#nextServiceDetails [data-edit="schedule"]').focus({preventScroll:true});}
  if($('#carProfileDetails').open){renderCarProfileDetails();$('#carProfileDetails [data-edit="vehicle"]').focus({preventScroll:true});}
+ if($('#maintenanceRecordedDetails').open){renderMaintenanceRecordedDetails();$('#maintenanceRecordedDetails [data-edit="service"]').focus({preventScroll:true});}
 });
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
 window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
