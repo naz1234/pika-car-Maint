@@ -173,6 +173,54 @@ html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 @media(max-width:600px){.overview{gap:17px}.overview-heading{display:flex;flex-wrap:wrap;gap:17px;margin-bottom:2px}.overview-heading h1{font-size:30px;letter-spacing:-1.2px}.overview-heading .eyebrow{font-size:8px;letter-spacing:1.4px}.overview-heading p:last-child{font-size:12px}.overview-heading .primary{margin:0;min-height:42px;padding:10px 14px}.vehicle-card{padding:22px;border-radius:17px}.vehicle-card h2{font-size:25px}.vehicle-card-top{margin-bottom:18px}.overview-car-art{height:140px;margin:6px auto}.vehicle-card-bottom strong{font-size:30px}.vehicle-card-bottom{padding-top:17px}.overview-schedule{border-radius:17px;padding:22px}.overview-schedule h2{font-size:23px;max-width:250px}.schedule-targets strong{font-size:19px}.overview-stats{grid-template-columns:1fr;padding:0;border-radius:15px}.overview-stat{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;border-right:0;border-bottom:1px solid var(--line);padding:18px}.overview-stat-top{font-size:11px}.overview-stat-top .overview-icon{display:inline-flex;width:28px;height:28px;grid-row:1/3}.overview-stat>strong{font-size:23px;grid-column:2;grid-row:1/3;align-self:center;text-align:right}.overview-stat>small{font-size:9px;padding-left:37px;grid-column:1}.overview-stat>strong small{font-size:11px}.overview-bottom{gap:17px}.overview-activity,.overview-finance{padding:21px;border-radius:15px}.overview-section-head h2{font-size:19px}.overview-section-head .eyebrow{font-size:8px}.overview-journal-note{font-size:9px}.overview-shortcuts{gap:3px 16px}.overview-shortcuts button{font-size:10px}.overview-shortcuts svg{width:15px}.overview-shortcuts>span{font-size:10px}}
 @media(prefers-reduced-motion:reduce){.overview-stat{transition:none}}
 
+/* Maintenance keeps the next visit and the journal within easy reach. */
+.maintenance-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:20px;align-items:start}
+.maintenance-dashboard svg{width:19px;height:19px;flex:none}
+.maintenance-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 14px}
+.maintenance-heading .eyebrow{font-size:9px;letter-spacing:1.6px;margin-bottom:7px}
+.maintenance-heading h1{font-size:34px;margin:0;letter-spacing:-1.2px}
+.maintenance-heading>.primary{gap:7px;padding:12px 16px;font-size:12px}
+.maintenance-heading>p{width:100%;font-size:12px;margin:0}
+.maintenance-next{grid-column:1;display:grid;grid-template-columns:32px minmax(0,1fr) 9px;align-items:center;gap:11px;width:100%;padding:16px;text-align:left;color:var(--ink);background:var(--accent-soft);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:14px;box-shadow:var(--shadow)}
+.maintenance-next-icon{display:grid;place-items:center;width:32px;height:36px;border-radius:9px;background:var(--surface);color:var(--accent)}
+.maintenance-next-main{display:grid;gap:7px;min-width:0}
+.maintenance-next-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;font-size:11px;font-weight:650}
+.maintenance-next-top .pill{font-size:9px;padding:4px 8px}
+.maintenance-next-main>strong{font-size:16px;font-weight:650;line-height:1.4;letter-spacing:-.3px}
+.maintenance-next-main>small{font-size:10px;line-height:1.5;color:var(--muted)}
+.maintenance-next-arrow,.maintenance-summary-arrow{font-size:22px;color:var(--accent)}
+.maintenance-summary{grid-column:1;min-width:0;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow);overflow:hidden}
+.maintenance-totals{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 8px;align-items:center;gap:16px;width:100%;padding:17px 18px;text-align:left;background:transparent;color:var(--ink)}
+.maintenance-totals>span:not(.maintenance-summary-arrow){display:grid;gap:7px;min-width:0}
+.maintenance-totals>span:nth-child(2){padding-left:17px;border-left:1px solid var(--line)}
+.maintenance-totals>span>span{font-size:10px;line-height:1.4;color:var(--muted)}
+.maintenance-totals strong{font-size:23px;letter-spacing:-.8px;line-height:1.2;font-weight:650;overflow-wrap:anywhere}
+.maintenance-mileage{display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border-top:1px solid var(--line);background:transparent;color:var(--ink);text-align:left}
+.maintenance-mileage-icon{color:var(--accent);display:flex}
+.maintenance-mileage>span:nth-child(2){display:grid;gap:4px;min-width:0}
+.maintenance-mileage strong{font-size:12px;font-weight:600;line-height:1.4}
+.maintenance-mileage small{font-size:9px;color:var(--muted);line-height:1.4}
+.maintenance-mileage-action{display:flex;align-items:center;gap:7px;margin-left:auto;font-size:10px;font-weight:650;color:var(--accent)}
+.maintenance-mileage-action svg{width:15px;height:15px}
+.maintenance-totals:focus-visible,.maintenance-mileage:focus-visible{outline-offset:-4px}
+.maintenance-history{grid-column:2;grid-row:2/span 2;min-width:0}
+.maintenance-history .section-title{margin-bottom:12px}
+.maintenance-history h2{font-size:21px;margin:0}
+.maintenance-history .section-title>span{font-size:10px;color:var(--muted)}
+.maintenance-history .service-list{overflow:visible}
+.maintenance-history .service-row{background:transparent}
+.maintenance-history .service-row:focus-visible{outline-offset:-4px;border-radius:10px}
+@media(hover:hover) and (pointer:fine){.maintenance-history .service-row:hover :is(strong,.service-row-arrow){color:var(--accent)}}
+@media(max-width:760px){
+ .maintenance-dashboard{grid-template-columns:minmax(0,1fr);gap:15px}
+ .maintenance-heading{gap:8px 12px}
+ .maintenance-heading h1{font-size:28px;letter-spacing:-1px}
+ .maintenance-heading>.primary{padding:12px 13px;font-size:11px;gap:5px}
+ .maintenance-history{grid-column:1;grid-row:auto;margin-top:3px}
+ .maintenance-history h2{font-size:20px}
+}
+@media(max-width:360px){.maintenance-heading h1{font-size:25px}.maintenance-heading>.primary{padding:11px}.maintenance-next{padding:14px 12px;gap:9px}.maintenance-next-main>strong{font-size:15px}.maintenance-totals{padding:15px;gap:12px}.maintenance-totals strong{font-size:21px}.maintenance-mileage{padding:12px 15px}}
+
 .fuel-filter{display:flex;align-items:end;gap:20px;margin:22px 0}
 .fuel-filter label{width:min(300px,100%)}
 .fuel-filter p{margin:0 0 12px;font-size:12px}
