@@ -9,6 +9,30 @@
 button.source{background:none;text-align:left;line-height:1.5}
 /* Safari can restore focus to this container after closing a PDF. */
 #content:focus{outline:none}
+.service-list{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--white)}
+.service-row{display:grid;grid-template-columns:minmax(0,1fr) auto 10px;align-items:center;gap:16px;width:100%;min-height:76px;padding:15px 18px;text-align:left;color:var(--ink);background:transparent;border-bottom:1px solid var(--line)}
+.service-row:last-child{border-bottom:0}
+.service-row:hover{background:var(--mint)}
+.service-row-main{display:grid;gap:6px;min-width:0}
+.service-row-date{font-size:11px;color:var(--muted)}
+.service-row-main strong{font-size:14px;line-height:1.5;overflow-wrap:anywhere}
+.service-row-cost{font-size:14px;white-space:nowrap}
+.service-row-arrow{font-size:23px;color:var(--muted)}
+#serviceDetails{width:min(620px,calc(100% - 24px));max-height:84svh;padding:0;overflow:hidden}
+#serviceDetails[open]{display:flex;flex-direction:column}
+.service-dialog-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px;border-bottom:1px solid var(--line);flex:none}
+.service-dialog-heading h2{font-size:21px;margin:0;line-height:1.35}
+.service-dialog-heading .eyebrow{margin-bottom:7px}
+.service-dialog-heading>button{min-width:44px;min-height:44px;flex:none}
+.service-dialog-body{padding:24px;overflow:auto;min-height:0;overscroll-behavior:contain;touch-action:pan-x pan-y}
+.service-detail-meta{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:20px;font-size:12px;color:var(--muted)}
+.service-detail-meta strong{font-size:20px;color:var(--ink);white-space:nowrap}
+.service-dialog-body>.preline{font-size:13px}
+.service-dialog-body section{margin-top:24px}
+.service-dialog-body section h3{font-size:15px;margin-bottom:12px}
+.service-dialog-body .rows{margin:0}
+.service-dialog-body .sources{display:grid;justify-items:start}
+@media(max-width:600px){.service-row{gap:10px;padding:13px 14px}.service-row-date{font-size:10px}.service-row-cost{font-size:13px}.service-dialog-heading,.service-dialog-body{padding:20px}}
 html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 @media(max-width:850px){input,select,textarea,.document-tools input,.document-tools select{font-size:16px}}
 #pdfViewer{position:fixed;inset:0;width:100%;max-width:none;height:100%;height:100dvh;max-height:none;margin:0;border-radius:0;padding:0 0 env(safe-area-inset-bottom);overflow:hidden;background:var(--paper)}

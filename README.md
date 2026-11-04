@@ -7,7 +7,7 @@ Production: https://pika-car-maint.pages.dev
 ## Features
 
 - Overview with documented mileage, maintenance cost and original financed amount.
-- Service timeline with invoice-level costs, parts and source PDF links.
+- Compact service rows show the date, mileage, title and cost. Tap a row for a popup with the full work notes, parts and source PDFs; PDF Back returns to those details.
 - Explicit next-service date and odometer target; whichever comes first.
 - Purchase breakdown separate from the bank repayment log.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
