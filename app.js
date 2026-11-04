@@ -1,5 +1,8 @@
 import {money,dateOK,validState,serviceStatus,loanTotals} from './model.js';
 import {openDocument} from './pdf-viewer.js';
+// Keep mobile page zoom fixed. The PDF reader handles its own pinch zoom.
+for(const type of ['gesturestart','gesturechange'])document.addEventListener(type,e=>{if(e.cancelable)e.preventDefault();},{passive:false});
+for(const type of ['touchstart','touchmove'])document.addEventListener(type,e=>{if(e.touches.length>1&&e.cancelable)e.preventDefault();},{passive:false});
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number=n=>new Intl.NumberFormat('en-MY').format(n);
