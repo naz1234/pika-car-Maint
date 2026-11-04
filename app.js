@@ -1,4 +1,5 @@
 import {money,dateOK,validState,serviceStatus,loanTotals} from './model.js';
+import {openDocument} from './pdf-viewer.js';
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number=n=>new Intl.NumberFormat('en-MY').format(n);
@@ -34,7 +35,7 @@ async function save(next){
   state=next;revision=r.revision;render();notify('Saved to your garage');return true;
  }finally{busy=false;$('#editorForm button[type=submit]')?.removeAttribute('disabled');}
 }
-const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return d?'<a class="source" href="/api/documents/'+id+'" target="_blank" rel="noopener">▤ '+esc(d.filename)+' ↗</a>':'';}).join('');
+const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return d?'<button class="source" type="button" data-document="'+id+'">▤ '+esc(d.filename)+'</button>':'';}).join('');
 const metric=(label,value,sub,tone='')=>'<article class="metric '+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+sub+'</small></article>';
 const heading=(eyebrow,title,copy,action='')=>'<div class="page-head"><div><p class="eyebrow">'+eyebrow+'</p><h1>'+title+'</h1><p>'+copy+'</p></div>'+action+'</div>';
 const empty=(title,copy)=>'<div class="empty"><strong>'+title+'</strong><p>'+copy+'</p></div>';
@@ -91,14 +92,14 @@ function render(){
   const v=state.vehicle;
   content=heading('YOUR GARAGE','Car details','Keep the mileage current for useful service reminders.','<button class="primary" data-edit="vehicle">Edit car details ↗</button>')+
   '<section class="card"><p class="eyebrow">VEHICLE PROFILE</p><h2>'+esc(v.name)+'</h2><dl class="rows">'+[['Model',v.model],['Registration',v.plate],['Colour',v.colour],['VIN',v.vin],['Last recorded mileage',number(v.odometer)+' km'],['Mileage recorded on',date(v.odometerDate)]].map(([k,val])=>'<div><dt>'+k+'</dt><dd>'+esc(val)+'</dd></div>').join('')+'</dl></section>'+
-  '<section class="card spaced"><h2>Your data, together.</h2><p>This garage is public. Anyone with the link can view and update the records. Changes save across devices. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Download original PDFs from Options → Document library.</p></section>';
+  '<section class="card spaced"><h2>Your data, together.</h2><p>This garage is public. Anyone with the link can view and update the records. Changes save across devices. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Open original PDFs from Options → Document library.</p></section>';
  }
  $('#content').innerHTML=content;if(view==='documents')renderDocuments();
 }
 function renderDocuments(){
  const query=($('#documentSearch')?.value||'').toLowerCase(),category=$('#documentCategory')?.value||'All';
  const files=documents.filter(d=>(category==='All'||d.category===category)&&[d.filename,d.category,...d.aliases].join(' ').toLowerCase().includes(query));
- $('#documentList').innerHTML=files.length?files.map(d=>'<article class="card document-card"><div class="pdf-icon">PDF</div><span class="pill">'+esc(d.category)+'</span><h3>'+esc(d.filename)+'</h3><p>'+number(Math.ceil(d.size/1024))+' KB · Original document</p>'+(d.aliases.length?'<p class="footnote">Duplicate copy: '+d.aliases.map(esc).join(', ')+'</p>':'')+'<a class="secondary" href="/api/documents/'+d.id+'" target="_blank" rel="noopener">Open PDF ↗</a></article>').join(''):empty('No matching documents','Try another search or add a PDF.');
+ $('#documentList').innerHTML=files.length?files.map(d=>'<article class="card document-card"><div class="pdf-icon">PDF</div><span class="pill">'+esc(d.category)+'</span><h3>'+esc(d.filename)+'</h3><p>'+number(Math.ceil(d.size/1024))+' KB · Original document</p>'+(d.aliases.length?'<p class="footnote">Duplicate copy: '+d.aliases.map(esc).join(', ')+'</p>':'')+'<button class="secondary" type="button" data-document="'+d.id+'">Open PDF</button></article>').join(''):empty('No matching documents','Try another search or add a PDF.');
 }
 function field(label,name,value='',type='text',extra=''){
  return '<label>'+label+'<input name="'+name+'" type="'+type+'" value="'+esc(value??'')+'" '+extra+'></label>';
@@ -139,6 +140,7 @@ $('#editorForm').addEventListener('submit',async e=>{
  }catch(error){const box=$('#formError');if(box)box.textContent=error.message;else notify(error.message);}finally{e.target.querySelector('button[type=submit]')?.removeAttribute('disabled');}
 });
 document.addEventListener('click',async e=>{
+ const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
  const go=e.target.closest('[data-view]');if(go){view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
