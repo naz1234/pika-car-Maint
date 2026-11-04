@@ -59,3 +59,20 @@ test('public PDF upload validates signature, deduplicates bytes and supports dow
  assert.equal((await download({params:{id:'missing'},env})).status,404);
 });
 
+test('fuel saves round-trip, legacy clients retain fuel, and stale or invalid edits fail',async()=>{
+ const env=environment(),s=fixture();
+ env.db.prepare('INSERT INTO app_state VALUES (?,?,?)').run('garage-v2',JSON.stringify(s),1);
+ s.fuelEntries=[{id:'fuel-1',date:'2026-09-01',station:'Test',cost:40,litres:null,odometer:null,fullTank:false,notes:''}];
+ const initial=await save({request:request('state','PUT',{state:s,revision:1}),env});assert.equal(initial.status,200);
+ let data=await (await getState({env})).json();assert.deepEqual(data.state.fuelEntries,s.fuelEntries);
+ const legacy=structuredClone(data.state);delete legacy.fuelEntries;legacy.vehicle.name='Updated name';
+ assert.equal((await save({request:request('state','PUT',{state:legacy,revision:data.revision}),env})).status,200);
+ assert.equal((await save({request:request('state','PUT',{state:legacy,revision:data.revision}),env})).status,409);
+ data=await (await getState({env})).json();assert.deepEqual(data.state.fuelEntries,s.fuelEntries);assert.equal(data.state.vehicle.name,'Updated name');
+ const invalid=structuredClone(data.state);invalid.fuelEntries[0].litres=0;
+ assert.equal((await save({request:request('state','PUT',{state:invalid,revision:data.revision}),env})).status,400);
+ data.state.fuelEntries=[];
+ assert.equal((await save({request:request('state','PUT',data),env})).status,200);
+ assert.deepEqual((await (await getState({env})).json()).state.fuelEntries,[]);
+});
+
