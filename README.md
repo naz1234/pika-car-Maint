@@ -23,7 +23,7 @@ Production: https://pika-car-maint.pages.dev
 - My car and Options buttons on Overview open the full vehicle details and appearance/document settings. Both include Back to Overview, and the main navigation has four tabs: Overview, Maintenance, Fuel and Loan & purchase. The public PDF library supports categories, search, upload, SHA-256 deduplication and document viewing.
 - In-app PDF reader with an always-visible Back button, page navigation and zoom. Closing it keeps your place in the garage, including document filters. PDFs stay on the app's origin; PDF.js is bundled locally.
 - Mobile app screens stay at normal scale. PDF pinch gestures zoom the document itself, so the toolbar and the garage stay at normal size when returning. Mobile form controls use 16px text to avoid focus zoom.
-- Light and dark modes, remembered on each device and applied before the first paint.
+- Red Mica light and dark modes, remembered on each device and applied before the first paint. Warm page backgrounds, separate panel surfaces, bordered popup windows and shaded headers keep screens and stacked dialogs distinct. Long forms scroll beneath their visible title and Close button.
 - Installable app. Only the static shell is cached; records and PDFs are never cached by the service worker.
 - Automatic app updates check every minute while visible, and on returning to the app or reconnecting. Updates wait for open forms, uploads and PDF reading to finish, then restore the current tab, document filters and scroll position.
 - JSON export of state and document metadata.
