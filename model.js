@@ -13,6 +13,9 @@ export function validState(s) {
    && Array.isArray(s.services) && s.services.length<=5000 && new Set(s.services.map(x=>x.id)).size===s.services.length && s.services.every(x=>obj(x)&&txt(x.id,100)&&txt(x.title,150)&&dateOK(x.date)&&num(x.mileage,1e7)&&num(x.cost)&&txt(x.notes)&&ids(x.documents)&&Array.isArray(x.parts)&&x.parts.length<=50&&x.parts.every(p=>txt(p.name,150)&&num(p.amount)))
    && obj(s.purchase) && ['onRoad','insurance','booking','customerDue','depositPaid','dealerReceipt','principal','roadTax','rebate'].every(k=>num(s.purchase[k])) && ids(s.purchase.documents) && Array.isArray(s.purchase.notes) && s.purchase.notes.length<=20 && s.purchase.notes.every(n=>txt(n))
    && obj(s.loan) && txt(s.loan.lender,120) && nullable(s.loan.monthly,num) && nullable(s.loan.months,n=>Number.isInteger(n)&&n>0&&n<=600) && nullable(s.loan.firstDate,dateOK) && nullable(s.loan.nextDate,dateOK) && nullable(s.loan.rate,n=>num(n,100)) && txt(s.loan.notes)
+   && ['finalInstalment','agreementTotal','termCharges'].every(k=>s.loan[k]===undefined||nullable(s.loan[k],num))
+   && ['referenceRate','margin'].every(k=>s.loan[k]===undefined||nullable(s.loan[k],n=>num(n,100)))
+   && (s.loan.rateType===undefined||nullable(s.loan.rateType,v=>['fixed','variable'].includes(v))) && (s.loan.documents===undefined||ids(s.loan.documents))
    && Array.isArray(s.payments) && s.payments.length<=5000 && new Set(s.payments.map(x=>x.id)).size===s.payments.length && s.payments.every(p=>txt(p.id,100)&&dateOK(p.date)&&num(p.amount)&&p.amount>0&&txt(p.note,1000))
    && (s.fuelEntries===undefined || validFuelEntries(s.fuelEntries));
  } catch { return false; }
@@ -26,6 +29,6 @@ export function serviceStatus(s,today=new Date().toISOString().slice(0,10)) {
 }
 export function loanTotals(s) {
  const paid=Math.round(s.payments.reduce((a,p)=>a+p.amount,0)*100)/100;
- const scheduled=s.loan.monthly!=null&&s.loan.months!=null?Math.round(s.loan.monthly*s.loan.months*100)/100:null;
+ const scheduled=s.loan.monthly!=null&&s.loan.months!=null?Math.round((s.loan.monthly*(s.loan.months-1)+(s.loan.finalInstalment??s.loan.monthly))*100)/100:null;
  return {paid,scheduled,remaining:scheduled==null?null:Math.max(0,Math.round((scheduled-paid)*100)/100)};
 }

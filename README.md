@@ -17,7 +17,8 @@ Production: https://pika-car-maint.pages.dev
 - Purchase breakdown separate from the bank repayment log.
 - Overview's Purchase & loan panel opens the original financing, price breakdown, receipt notes and supporting PDFs. PDF Back returns to those details, with a link to Loan & purchase.
 - Repayments logged opens the loan snapshot with the original loan amount, lender, monthly instalment, next payment date and repayments logged, plus a link to Loan & purchase.
-- Editable lender, monthly instalment, term, payment dates and stated rate.
+- Editable lender, monthly and final instalments, term, payment dates, effective annual rate, fixed/variable rate type, reference rate, margin, original agreement total and term charges. Linked loan PDFs open from the loan page and snapshot popup.
+- Scheduled totals use the monthly amount for all but the final month, then the final instalment when supplied. Original agreement figures are shown separately; variable-rate terms may change. Dates and actual repayments are never inferred from an agreement.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
 - My car and Options buttons on Overview open the full vehicle details and appearance/document settings. Both include Back to Overview, and the main navigation has four tabs: Overview, Maintenance, Fuel and Loan & purchase. The public PDF library supports categories, search, upload, SHA-256 deduplication and document viewing.
 - In-app PDF reader with an always-visible Back button, page navigation and zoom. Closing it keeps your place in the garage, including document filters. PDFs stay on the app's origin; PDF.js is bundled locally.
@@ -42,6 +43,8 @@ The original `app_state.shared` record remains unchanged as the legacy backup. P
 ## Security and saving
 
 Fuel records live in the existing D1 garage state as optional `fuelEntries`; no schema migration is needed. Older state remains valid, and saves from older installed clients preserve the fuel log. Personal transaction records are added through the state API, never bundled into the app source.
+
+Loan agreement metadata is optional within the existing version-2 `loan` object. Older clients preserve omitted agreement fields and document links; current clients can clear amounts/rates with `null` and links with an empty array. Source PDFs and imported financial records stay in R2/D1 rather than GitHub.
 
 All data and document routes are public. Mutations require a matching Origin, which prevents cross-site browser submissions but does not restrict who can edit this public app. State writes use a D1 revision comparison to reject stale edits. Failed saves stay visible in the form.
 
