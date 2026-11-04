@@ -13,6 +13,7 @@ Production: https://pika-car-maint.pages.dev
 - Explicit next-service date and odometer target; whichever comes first.
 - Next service stays in a compact row on Overview and Maintenance. Tap for the full date/mileage schedule, status, workshop notes, supporting PDF and edit option in a popup.
 - Purchase breakdown separate from the bank repayment log.
+- Compact Original loan amount row opens the purchase financing, price breakdown, receipt notes and supporting PDFs. PDF Back returns to those details, with a link to Loan & purchase.
 - Compact Loan snapshot row opens a popup with the original loan amount, lender, monthly instalment, next payment date and repayments logged, plus a link to Loan & purchase.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
