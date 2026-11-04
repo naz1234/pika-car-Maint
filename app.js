@@ -11,7 +11,7 @@ const number=n=>new Intl.NumberFormat('en-MY').format(n);
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const date=s=>s?new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(s)):'Not provided';
 let state,revision,documents=[],view='overview',editing,busy=false,deferredInstall,fuelMonth='',editingFuelId=null;
-const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel consumption',loan:'Loan & purchase',documents:'Options / Documents',car:'My car',options:'Options'};
+const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel consumption',loan:'Loan & purchase',documents:'Overview / Options / Documents',car:'My car',options:'Overview / Options'};
 function notify(text){$('#notice').textContent=text;$('#notice').hidden=false;clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('#notice').hidden=true,6000);}
 async function api(path,options={}){
  let response;
@@ -112,13 +112,14 @@ function renderOverview(total,sorted,loan){
   document:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h4"/>',
   calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18m-13 5 3 3 5-5"/>',
   car:'<path d="m5 8 2-5h10l2 5 2 3v7H3v-7zM5 8h14M3 14h18M6 18v3m12-3v3M6 11h2m8 0h2"/>',
-  arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>'
+  arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>',
+  options:'<path d="M4 7h3m6 0h7M4 17h7m6 0h3"/><circle cx="10" cy="7" r="3"/><circle cx="14" cy="17" r="3"/>'
  }[name]||'')+'</svg>';
  const distance=status.km==null?'Add a mileage target':status.km<0?number(-status.km)+' km past the mileage target':status.km===0?'Mileage target reached':number(status.km)+' km to the mileage target';
  const days=status.days==null?'Date not set':status.days<0?number(-status.days)+' days overdue':status.days===0?'Due today':number(status.days)+' days away';
  const stat=(symbol,label,value,copy,attributes)=>'<button class="overview-stat" type="button" '+attributes+'><span class="overview-stat-top"><span class="overview-icon">'+icon(symbol)+'</span><span>'+label+'</span>'+icon('arrow')+'</span><strong>'+value+'</strong><small>'+copy+'</small></button>';
  return `<div class="overview">
-  <div class="page-head overview-heading"><div><p class="eyebrow">A LITTLE CARE. MANY MORE MILES.</p><h1>Your car, at a glance.</h1><p>Everything you need for the road ahead.</p></div><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log a service</button></div>
+  <div class="page-head overview-heading"><div><p class="eyebrow">A LITTLE CARE. MANY MORE MILES.</p><h1>Your car, at a glance.</h1><p>Everything you need for the road ahead.</p></div><div class="overview-heading-actions"><button class="secondary" type="button" data-view="options">${icon('options')} Options</button><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log a service</button></div></div>
   <div class="overview-top">
    <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
     <div class="vehicle-card-top"><span class="eyebrow">IN YOUR GARAGE</span><span class="registration">${esc(v.plate||'Registration not provided')}</span></div>
@@ -159,7 +160,7 @@ function render(){
  if(!state)return;
  const total=state.services.reduce((sum,x)=>sum+x.cost,0),loan=loanTotals(state);
  const sorted=[...state.services].sort((a,b)=>b.date.localeCompare(a.date));
- const activeTab=view==='documents'?'options':view;
+ const activeTab=['options','documents'].includes(view)?'overview':view;
  document.querySelectorAll('.sidebar nav [data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===activeTab);b.setAttribute('aria-current',b.dataset.view===activeTab?'page':'false');});
  $('#breadcrumb').textContent='Your garage / '+navLabels[view];
  $('#syncStatus').textContent='Saved '+new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(revision));
@@ -184,7 +185,7 @@ function render(){
   (state.payments.length?'<div class="card">'+[...state.payments].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>'<div class="payment-row"><div><strong>'+date(p.date)+'</strong><p>'+esc(p.note)+'</p></div><strong>'+money(p.amount)+'</strong></div>').join('')+'</div>':empty('No bank repayments recorded','The dealer’s purchase receipt is separate from your monthly bank repayments.'));
  }
  if(view==='options'){
-  content=heading('MAKE IT YOURS','Options','Choose your appearance and find your documents.')+
+  content='<button class="text-button back-button" data-view="overview" type="button">← Back to Overview</button>'+heading('MAKE IT YOURS','Options','Choose your appearance and find your documents.')+
   '<section class="card options-section"><p class="eyebrow">APP UPDATES</p><h2>Always up to date.</h2><p>New versions load automatically. If you’re editing or reading a PDF, the update waits until you finish.</p></section>'+
   '<section class="card options-section spaced" aria-labelledby="appearanceTitle"><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">Light or dark, your choice.</h2><p>Choose a look for this device. Your choice is remembered.</p><div class="theme-options" role="group" aria-label="Colour mode">'+
   ['light','dark'].map(theme=>'<button class="theme-choice" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(window.PikaTheme.get()===theme)+'"><span class="theme-swatch '+theme+'" aria-hidden="true"><span class="swatch-nav"></span><span class="swatch-card"></span><span class="swatch-card"></span></span><span class="theme-label">'+(theme==='light'?'☀ Light':'☾ Dark')+'<span class="theme-check" aria-hidden="true">✓</span></span></button>').join('')+

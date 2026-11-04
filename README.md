@@ -19,7 +19,7 @@ Production: https://pika-car-maint.pages.dev
 - Repayments logged opens the loan snapshot with the original loan amount, lender, monthly instalment, next payment date and repayments logged, plus a link to Loan & purchase.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
-- Options tab with a public PDF library, categories, search, upload, SHA-256 deduplication and document viewing.
+- Options button on Overview opens appearance settings and a public PDF library with categories, search, upload, SHA-256 deduplication and document viewing. The main navigation has five tabs; Options includes a Back to Overview button.
 - In-app PDF reader with an always-visible Back button, page navigation and zoom. Closing it keeps your place in the garage, including document filters. PDFs stay on the app's origin; PDF.js is bundled locally.
 - Mobile app screens stay at normal scale. PDF pinch gestures zoom the document itself, so the toolbar and the garage stay at normal size when returning. Mobile form controls use 16px text to avoid focus zoom.
 - Light and dark modes, remembered on each device and applied before the first paint.
