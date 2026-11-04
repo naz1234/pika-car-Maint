@@ -6,6 +6,8 @@ Production: https://pika-car-maint.pages.dev
 
 ## Features
 
+- Fuel tab with editable fill-ups, monthly spending, transaction counts and averages. Receipt litres, odometer and full-tank status are optional; unknown readings stay unknown.
+- Fuel economy (km/L and L/100 km) uses complete full-to-full intervals, including intervening partial fills. Missing litres or backwards mileage break the measurement chain. Monthly economy uses intervals ending in that month, which can span a month boundary.
 - Overview with documented mileage, maintenance cost and original financed amount.
 - Compact Maintenance recorded row opens the total, visit count and individual service costs in a popup. Open any service for its full record/PDFs, or go to Maintenance and log a new visit.
 - Compact car profile row at the top of Overview. Tap for the full model, registration, colour, VIN and recorded mileage, with editing and access to My car in the popup.
@@ -38,6 +40,8 @@ New installation: apply `schema.sql` and `migrations/0002_garage.sql`, bind D1/R
 The original `app_state.shared` record remains unchanged as the legacy backup. Personal records and PDFs are not in this repository.
 
 ## Security and saving
+
+Fuel records live in the existing D1 garage state as optional `fuelEntries`; no schema migration is needed. Older state remains valid, and saves from older installed clients preserve the fuel log. Personal transaction records are added through the state API, never bundled into the app source.
 
 All data and document routes are public. Mutations require a matching Origin, which prevents cross-site browser submissions but does not restrict who can edit this public app. State writes use a D1 revision comparison to reject stale edits. Failed saves stay visible in the form.
 
