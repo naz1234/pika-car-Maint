@@ -141,13 +141,14 @@ html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 .overview-section-head h2{font-size:19px;letter-spacing:-.5px;margin:0;font-weight:600}
 .overview-section-head .text-button{display:flex;align-items:center;gap:8px;white-space:nowrap;font-size:10px;min-height:44px}
 .overview-section-head svg{width:15px}
-.overview-activity .service-list{border:0;border-radius:0;background:transparent}
-.overview-activity .service-row{padding:15px 0;min-height:83px;gap:10px}
+.overview-activity .service-list{border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible}
+.overview-activity .service-row{padding:15px 0;min-height:83px;gap:10px;background:transparent}
 .overview-activity .service-row-main{gap:6px}
 .overview-activity .service-row-main strong{font-size:12px;font-weight:600}
 .overview-activity .service-row-cost{font-size:12px}
 .overview-activity .service-row-date{font-size:10px}
 .overview-activity .service-row-arrow{font-size:19px}
+@media(hover:hover) and (pointer:fine){.overview-activity .service-row:hover :is(strong,.service-row-arrow){color:var(--accent)}}
 .overview-journal-note{display:flex;align-items:center;gap:9px;font-size:10px;color:var(--muted);padding-top:20px;border-top:1px solid var(--line);margin-top:3px;line-height:1.6}
 .overview-journal-note svg{width:15px;height:15px;color:var(--accent)}
 .overview-finance{display:flex;flex-direction:column;background:var(--finance-bg)}
