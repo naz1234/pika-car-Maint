@@ -43,6 +43,19 @@ const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return 
 const metric=(label,value,sub,tone='')=>'<article class="metric '+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+sub+'</small></article>';
 const heading=(eyebrow,title,copy,action='')=>'<div class="page-head"><div><p class="eyebrow">'+eyebrow+'</p><h1>'+title+'</h1><p>'+copy+'</p></div>'+action+'</div>';
 const empty=(title,copy)=>'<div class="empty"><strong>'+title+'</strong><p>'+copy+'</p></div>';
+function carProfileRow(){
+ const v=state.vehicle;
+ return '<div class="service-list"><button class="service-row car-profile-row" type="button" data-action="car-profile" aria-haspopup="dialog"><span class="service-row-main"><strong>'+esc(v.name)+'</strong><span class="service-row-date">'+esc(v.model)+'</span></span><span class="pill">'+esc(v.plate||'Not provided')+'</span><span class="service-row-arrow" aria-hidden="true">›</span></button></div>';
+}
+function renderCarProfileDetails(){
+ const v=state.vehicle;
+ $('#carProfileTitle').textContent=v.name;
+ $('#carProfileBody').innerHTML='<dl class="rows">'+[['Model',v.model],['Registration',v.plate||'Not provided'],['Colour',v.colour||'Not provided'],['VIN',v.vin||'Not provided'],['Last recorded mileage',number(v.odometer)+' km'],['Mileage recorded on',date(v.odometerDate)]].map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('')+'</dl><div class="profile-actions"><button class="secondary" data-edit="vehicle">Edit car details ↗</button><button class="text-button" data-view="car">See My car ↗</button></div>';
+}
+function openCarProfile(){
+ if(!state)return;
+ renderCarProfileDetails();$('#carProfileBody').scrollTop=0;$('#carProfileDetails').showModal();
+}
 function nextServiceRow(){
  const s=serviceStatus(state,today());
  const due=[state.nextService.date?date(state.nextService.date):null,state.nextService.mileage==null?null:number(state.nextService.mileage)+' km'].filter(Boolean).join(' or ')||'Schedule not provided';
@@ -89,7 +102,7 @@ function render(){
  let content='';
  if(view==='overview'){
   content=heading('THE ROAD AHEAD','Everything in one place.','A clear picture of your car, its care and its costs.')+
-  '<section class="hero"><div><span class="pill light">YOUR CAR</span><h2>'+esc(state.vehicle.name)+'</h2><p>'+esc(state.vehicle.model)+'</p><div class="hero-tags"><span>'+esc(state.vehicle.plate)+'</span><span>'+esc(state.vehicle.colour)+'</span></div><button data-view="car" class="hero-link">View car details ↗</button></div><div class="car-illustration" aria-hidden="true"><div class="car-roof"></div><div class="car-body"><span></span><i></i></div><div class="wheel one"></div><div class="wheel two"></div><div class="road"></div></div></section>'+
+  carProfileRow()+
   '<div class="metrics">'+metric('Maintenance recorded',money(total),state.services.length+' service visits','mint')+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · publicly accessible')+'</div>'+
   '<div class="two-col"><div>'+nextServiceRow()+'</div><div>'+loanSnapshotRow()+'</div></div>'+
   '<div class="section-title spaced"><h2>Latest maintenance</h2><button data-view="maintenance" class="text-button">View history ↗</button></div>'+(sorted[0]?'<div class="service-list">'+serviceRow(sorted[0])+'</div>':empty('Start your service history','Log your first maintenance visit.'));
@@ -176,7 +189,7 @@ document.addEventListener('click',async e=>{
  const service=e.target.closest('[data-service]');if(service){openService(service.dataset.service);return;}
  const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
- const go=e.target.closest('[data-view]');if(go){if($('#loanSnapshotDetails').open)$('#loanSnapshotDetails').close();view=go.dataset.view;render();window.scrollTo({top:0});}
+ const go=e.target.closest('[data-view]');if(go){if($('#loanSnapshotDetails').open)$('#loanSnapshotDetails').close();if($('#carProfileDetails').open)$('#carProfileDetails').close();view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
  try{
@@ -186,6 +199,8 @@ document.addEventListener('click',async e=>{
   if(action==='close-next-service')$('#nextServiceDetails').close();
   if(action==='loan-snapshot')openLoanSnapshot();
   if(action==='close-loan-snapshot')$('#loanSnapshotDetails').close();
+  if(action==='car-profile')openCarProfile();
+  if(action==='close-car-profile')$('#carProfileDetails').close();
   if(action==='refresh'){await load();notify('Latest records loaded');}
   if(action==='export'){
    const blob=new Blob([JSON.stringify({state,documents,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
@@ -202,6 +217,7 @@ document.addEventListener('change',e=>{if(e.target.id==='documentCategory')rende
 $('#editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
 $('#editor').addEventListener('close',()=>{
  if($('#nextServiceDetails').open){renderNextServiceDetails();$('#nextServiceDetails [data-edit="schedule"]').focus({preventScroll:true});}
+ if($('#carProfileDetails').open){renderCarProfileDetails();$('#carProfileDetails [data-edit="vehicle"]').focus({preventScroll:true});}
 });
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
 window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
