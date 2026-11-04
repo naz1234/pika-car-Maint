@@ -7,6 +7,7 @@ Production: https://pika-car-maint.pages.dev
 ## Features
 
 - Overview with documented mileage, maintenance cost and original financed amount.
+- Compact car profile row at the top of Overview. Tap for the full model, registration, colour, VIN and recorded mileage, with editing and access to My car in the popup.
 - Compact service rows show the date, mileage, title and cost. Tap a row for a popup with the full work notes, parts and source PDFs; PDF Back returns to those details.
 - Explicit next-service date and odometer target; whichever comes first.
 - Next service stays in a compact row on Overview and Maintenance. Tap for the full date/mileage schedule, status, workshop notes, supporting PDF and edit option in a popup.
