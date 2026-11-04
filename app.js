@@ -43,9 +43,18 @@ const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return 
 const metric=(label,value,sub,tone='')=>'<article class="metric '+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+sub+'</small></article>';
 const heading=(eyebrow,title,copy,action='')=>'<div class="page-head"><div><p class="eyebrow">'+eyebrow+'</p><h1>'+title+'</h1><p>'+copy+'</p></div>'+action+'</div>';
 const empty=(title,copy)=>'<div class="empty"><strong>'+title+'</strong><p>'+copy+'</p></div>';
-function nextCard(){
+function nextServiceRow(){
  const s=serviceStatus(state,today());
- return '<section class="card next-card"><div class="section-title"><span class="eyebrow">NEXT SERVICE</span><span class="pill '+s.tone+'">'+s.label+'</span></div><div class="next-grid"><div><small>By date</small><h2>'+date(state.nextService.date)+'</h2></div><span class="or">OR</span><div><small>By odometer</small><h2>'+(state.nextService.mileage==null?'Not provided':number(state.nextService.mileage)+' <small>km</small>')+'</h2></div></div><p>Whichever comes first.</p><div class="callout">'+esc(state.nextService.note||'Add a confirmed service schedule from your workshop.')+'</div><div class="card-bottom"><span>'+(s.km==null?'Mileage target not set':s.km>=0?number(s.km)+' km to the mileage limit':number(-s.km)+' km past the mileage limit')+'</span><button data-edit="schedule" class="text-button">Edit schedule ↗</button></div>'+sourceLinks(state.nextService.documents)+'</section>';
+ const due=[state.nextService.date?date(state.nextService.date):null,state.nextService.mileage==null?null:number(state.nextService.mileage)+' km'].filter(Boolean).join(' or ')||'Schedule not provided';
+ return '<div class="service-list"><button class="service-row next-service-row" type="button" data-action="next-service" aria-haspopup="dialog"><span class="service-row-main"><strong>Next service</strong><span class="service-row-date">'+due+'</span></span><span class="pill '+s.tone+'">'+s.label+'</span><span class="service-row-arrow" aria-hidden="true">›</span></button></div>';
+}
+function renderNextServiceDetails(){
+ const s=serviceStatus(state,today());
+ $('#nextServiceBody').innerHTML='<span class="pill '+s.tone+'">'+s.label+'</span><div class="next-grid"><div><small>By date</small><h2>'+date(state.nextService.date)+'</h2></div><span class="or">OR</span><div><small>By odometer</small><h2>'+(state.nextService.mileage==null?'Not provided':number(state.nextService.mileage)+' <small>km</small>')+'</h2></div></div><p>Whichever comes first.</p><div class="callout">'+esc(state.nextService.note||'Add a confirmed service schedule from your workshop.')+'</div><div class="card-bottom"><span>'+(s.km==null?'Mileage target not set':s.km>=0?number(s.km)+' km to the mileage limit':number(-s.km)+' km past the mileage limit')+'</span><button data-edit="schedule" class="text-button">Edit schedule ↗</button></div><div class="sources">'+sourceLinks(state.nextService.documents)+'</div>';
+}
+function openNextService(){
+ if(!state)return;
+ renderNextServiceDetails();$('#nextServiceBody').scrollTop=0;$('#nextServiceDetails').showModal();
 }
 function serviceRow(s){
  return '<button class="service-row" type="button" data-service="'+esc(s.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(s.date)+' · '+number(s.mileage)+' km</span><strong>'+esc(s.title)+'</strong></span><strong class="service-row-cost">'+money(s.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
@@ -72,12 +81,12 @@ function render(){
   content=heading('THE ROAD AHEAD','Everything in one place.','A clear picture of your car, its care and its costs.')+
   '<section class="hero"><div><span class="pill light">YOUR CAR</span><h2>'+esc(state.vehicle.name)+'</h2><p>'+esc(state.vehicle.model)+'</p><div class="hero-tags"><span>'+esc(state.vehicle.plate)+'</span><span>'+esc(state.vehicle.colour)+'</span></div><button data-view="car" class="hero-link">View car details ↗</button></div><div class="car-illustration" aria-hidden="true"><div class="car-roof"></div><div class="car-body"><span></span><i></i></div><div class="wheel one"></div><div class="wheel two"></div><div class="road"></div></div></section>'+
   '<div class="metrics">'+metric('Maintenance recorded',money(total),state.services.length+' service visits','mint')+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · publicly accessible')+'</div>'+
-  '<div class="two-col"><div>'+nextCard()+'</div><section class="card loan-preview"><p class="eyebrow">LOAN SNAPSHOT</p><h2>Know where you stand.</h2><dl class="rows"><div><dt>Monthly instalment</dt><dd>'+money(state.loan.monthly)+'</dd></div><div><dt>Lender</dt><dd>'+esc(state.loan.lender||'Not provided')+'</dd></div><div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div></dl><p class="muted">Bank balance and repayment status are not available from the purchase PDFs.</p><button data-view="loan" class="secondary">See loan & purchase ↗</button></section></div>'+
+  '<div class="two-col"><div>'+nextServiceRow()+'</div><section class="card loan-preview"><p class="eyebrow">LOAN SNAPSHOT</p><h2>Know where you stand.</h2><dl class="rows"><div><dt>Monthly instalment</dt><dd>'+money(state.loan.monthly)+'</dd></div><div><dt>Lender</dt><dd>'+esc(state.loan.lender||'Not provided')+'</dd></div><div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div></dl><p class="muted">Bank balance and repayment status are not available from the purchase PDFs.</p><button data-view="loan" class="secondary">See loan & purchase ↗</button></section></div>'+
   '<div class="section-title spaced"><h2>Latest maintenance</h2><button data-view="maintenance" class="text-button">View history ↗</button></div>'+(sorted[0]?'<div class="service-list">'+serviceRow(sorted[0])+'</div>':empty('Start your service history','Log your first maintenance visit.'));
  }
  if(view==='maintenance'){
   content=heading('CARE THAT COUNTS','Maintenance','Workshop records, clear costs and your next visit.','<button class="primary" data-edit="service">＋ Log a service</button>')+
-  '<div class="metrics three">'+metric('Total recorded cost',money(total),'Each invoice counted once','mint')+metric('Service visits',String(state.services.length),'Includes no-charge repairs')+metric('Latest recorded mileage',number(state.vehicle.odometer)+' km','As at '+date(state.vehicle.odometerDate))+'</div>'+nextCard()+
+  '<div class="metrics three">'+metric('Total recorded cost',money(total),'Each invoice counted once','mint')+metric('Service visits',String(state.services.length),'Includes no-charge repairs')+metric('Latest recorded mileage',number(state.vehicle.odometer)+' km','As at '+date(state.vehicle.odometerDate))+'</div>'+nextServiceRow()+
   '<div class="section-title spaced"><h2>Service timeline</h2><span class="muted">Newest first</span></div>'+(sorted.length?'<div class="service-list">'+sorted.map(serviceRow).join('')+'</div>':empty('Start your service history','Log your first maintenance visit.'))+
   '<p class="footnote">Service invoices and their matching e-invoices describe the same visit. Replacement and inspection are kept distinct in the notes.</p>';
  }
@@ -163,6 +172,8 @@ document.addEventListener('click',async e=>{
  try{
   if(action==='close'&&!busy)$('#editor').close();
   if(action==='close-service')$('#serviceDetails').close();
+  if(action==='next-service')openNextService();
+  if(action==='close-next-service')$('#nextServiceDetails').close();
   if(action==='refresh'){await load();notify('Latest records loaded');}
   if(action==='export'){
    const blob=new Blob([JSON.stringify({state,documents,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
@@ -177,6 +188,9 @@ window.addEventListener('pika-theme-change',()=>{
 document.addEventListener('input',e=>{if(e.target.id==='documentSearch')renderDocuments();});
 document.addEventListener('change',e=>{if(e.target.id==='documentCategory')renderDocuments();});
 $('#editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
+$('#editor').addEventListener('close',()=>{
+ if($('#nextServiceDetails').open){renderNextServiceDetails();$('#nextServiceDetails [data-edit="schedule"]').focus({preventScroll:true});}
+});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
 window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
 startAutoUpdates({

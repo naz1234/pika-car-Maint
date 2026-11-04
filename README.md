@@ -9,6 +9,7 @@ Production: https://pika-car-maint.pages.dev
 - Overview with documented mileage, maintenance cost and original financed amount.
 - Compact service rows show the date, mileage, title and cost. Tap a row for a popup with the full work notes, parts and source PDFs; PDF Back returns to those details.
 - Explicit next-service date and odometer target; whichever comes first.
+- Next service stays in a compact row on Overview and Maintenance. Tap for the full date/mileage schedule, status, workshop notes, supporting PDF and edit option in a popup.
 - Purchase breakdown separate from the bank repayment log.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
