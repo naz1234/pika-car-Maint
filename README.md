@@ -12,7 +12,8 @@ Production: https://pika-car-maint.pages.dev
 - Purchase breakdown separate from the bank repayment log.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
-- Options tab with a public PDF library, categories, search, upload, SHA-256 deduplication and downloads.
+- Options tab with a public PDF library, categories, search, upload, SHA-256 deduplication and document viewing.
+- In-app PDF reader with an always-visible Back button, page navigation and zoom. Closing it keeps your place in the garage, including document filters. PDFs stay on the app's origin; PDF.js is bundled locally.
 - Light and dark modes, remembered on each device and applied before the first paint.
 - Installable app. Only the static shell is cached; records and PDFs are never cached by the service worker.
 - JSON export of state and document metadata.
@@ -36,6 +37,8 @@ The app no longer creates or checks sessions. Historical session tables from mig
 ## Development
 
 Requires Node.js 24+ for SQLite-backed tests.
+
+Install dependencies with `pnpm install --frozen-lockfile` before building. The build copies the pinned PDF.js legacy browser library, worker, font/character-map assets and decoder files into `dist/vendor/pdfjs`. Only one page is rendered at a time to limit mobile memory use. The reader renders PDF content on canvas without executing document scripts, embedding the browser's native PDF viewer or relaxing the site's Content Security Policy.
 
 - `npm test`: validation, schedule and loan totals, public access without sessions or secrets, origin checks, stale writes, PDF validation, deduplication and retrieval.
 - `npm run build`: assemble browser assets.
