@@ -14,6 +14,7 @@ Production: https://pika-car-maint.pages.dev
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
 - Options tab with a public PDF library, categories, search, upload, SHA-256 deduplication and document viewing.
 - In-app PDF reader with an always-visible Back button, page navigation and zoom. Closing it keeps your place in the garage, including document filters. PDFs stay on the app's origin; PDF.js is bundled locally.
+- Mobile app screens stay at normal scale. PDF pinch gestures zoom the document itself, so the toolbar and the garage stay at normal size when returning. Mobile form controls use 16px text to avoid focus zoom.
 - Light and dark modes, remembered on each device and applied before the first paint.
 - Installable app. Only the static shell is cached; records and PDFs are never cached by the service worker.
 - JSON export of state and document metadata.

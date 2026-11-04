@@ -8,6 +8,7 @@ const controls = [...dialog.querySelectorAll('[data-pdf-control]')];
 let current;
 let library;
 let libraryAttempt = 0;
+let pinch;
 
 function updateControls(session, loading = false) {
   const ready = session.pdf && !loading;
@@ -29,8 +30,10 @@ function showError(session) {
   if (!session.pdf) pageLabel.textContent = 'Not loaded';
 }
 
-async function renderPage(session) {
+async function renderPage(session, preserveScroll = false) {
   const generation = ++session.generation;
+  session.rendering = true;
+  const scroll = preserveScroll ? {left: pages.scrollLeft, top: pages.scrollTop} : {left: 0, top: 0};
   session.renderTask?.cancel();
   updateControls(session, true);
   retry.hidden = true;
@@ -51,19 +54,24 @@ async function renderPage(session) {
     canvas.setAttribute('role', 'img');
     canvas.setAttribute('aria-label', `${session.document.filename}, page ${session.page} of ${session.pdf.numPages}`);
     pages.replaceChildren(canvas);
-    pages.scrollTo(0, 0);
+    pages.scrollTo(scroll.left, scroll.top);
     session.renderTask = page.render({ canvasContext: canvas.getContext('2d'), viewport,
       transform: [density, 0, 0, density, 0, 0] });
     await session.renderTask.promise;
     if (current !== session || generation !== session.generation) return;
+    session.rendering = false;
     status.textContent = '';
     updateControls(session);
   } catch (error) {
-    if (error.name !== 'RenderingCancelledException' && generation === session.generation) showError(session);
+    if (generation === session.generation) {
+      session.rendering = false;
+      if (error.name !== 'RenderingCancelledException') showError(session);
+    }
   }
 }
 
 function release() {
+  pinch = null;
   const session = current;
   current = null;
   session?.renderTask?.cancel();
@@ -121,5 +129,40 @@ for (const button of controls) button.addEventListener('click', () => {
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => { if (current?.pdf) renderPage(current); }, 150);
+  resizeTimer = setTimeout(() => { if (current?.pdf && !pinch) renderPage(current); }, 150);
 });
+
+// Scale the document, keeping the toolbar and the underlying app at normal size.
+const distance = touches => Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+const centre = touches => ({x: (touches[0].clientX + touches[1].clientX) / 2, y: (touches[0].clientY + touches[1].clientY) / 2});
+pages.addEventListener('touchstart', event => {
+  if (event.touches.length !== 2 || !current?.pdf || current.rendering || pinch) return;
+  const canvas = pages.querySelector('canvas');
+  if (!canvas) return;
+  const rect = canvas.getBoundingClientRect(), point = centre(event.touches), startDistance = distance(event.touches);
+  if (!startDistance) return;
+  event.preventDefault();
+  pinch = {session: current, canvas, distance: startDistance, zoom: current.zoom, width: rect.width, height: rect.height,
+    anchorX: (point.x - rect.left) / rect.width, anchorY: (point.y - rect.top) / rect.height};
+}, {passive: false});
+pages.addEventListener('touchmove', event => {
+  if (!pinch || pinch.session !== current || event.touches.length !== 2) return;
+  event.preventDefault();
+  const zoom = Math.min(3, Math.max(1, pinch.zoom * distance(event.touches) / pinch.distance));
+  const ratio = zoom / pinch.zoom, point = centre(event.touches);
+  pinch.canvas.style.width = `${pinch.width * ratio}px`;
+  pinch.canvas.style.height = `${pinch.height * ratio}px`;
+  const rect = pinch.canvas.getBoundingClientRect();
+  pages.scrollLeft += rect.left + rect.width * pinch.anchorX - point.x;
+  pages.scrollTop += rect.top + rect.height * pinch.anchorY - point.y;
+  current.zoom = zoom;
+  updateControls(current, true);
+}, {passive: false});
+function finishPinch(event) {
+  if (!pinch || event.touches.length >= 2) return;
+  const session = pinch.session;
+  pinch = null;
+  if (current === session) renderPage(session, true);
+}
+pages.addEventListener('touchend', finishPinch);
+pages.addEventListener('touchcancel', finishPinch);
