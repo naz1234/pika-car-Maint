@@ -1,0 +1,18 @@
+{
+  "name": "pika-car-maint",
+  "pages_build_output_dir": "dist",
+  "compatibility_date": "2026-11-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "pika-car-maint-db",
+      "database_id": "d24ce057-863b-47ff-8879-63a7ed4d6b8e"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "DOCUMENTS",
+      "bucket_name": "pika-car-maint-documents"
+    }
+  ]
+}

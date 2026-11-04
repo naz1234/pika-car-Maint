@@ -1,450 +1,159 @@
-const STORAGE_KEY = "pika-car-maint-v1";
-const SYNC_TIME_KEY = "pika-car-maint-sync-time";
-const SYNC_API = "/api/state";
-const DAY = 86400000;
-
-const defaultItems = [
-  { id: "engine-oil", name: "Engine oil", category: "Engine", icon: "🛢️", intervalKm: 10000, intervalMonths: 6, lastKm: null, lastDate: null },
-  { id: "oil-filter", name: "Oil filter", category: "Engine", icon: "⚙️", intervalKm: 10000, intervalMonths: 6, lastKm: null, lastDate: null },
-  { id: "tyre-pressure", name: "Tyre pressure", category: "Tyres", icon: "🛞", intervalKm: 0, intervalMonths: 1, lastKm: null, lastDate: null },
-  { id: "tyre-rotation", name: "Tyre rotation", category: "Tyres", icon: "🔄", intervalKm: 10000, intervalMonths: 6, lastKm: null, lastDate: null },
-  { id: "brake-check", name: "Brake inspection", category: "Brakes", icon: "🛑", intervalKm: 20000, intervalMonths: 12, lastKm: null, lastDate: null },
-  { id: "coolant", name: "Coolant", category: "Fluids", icon: "💧", intervalKm: 40000, intervalMonths: 24, lastKm: null, lastDate: null },
-  { id: "battery", name: "Battery check", category: "Electrical", icon: "🔋", intervalKm: 0, intervalMonths: 12, lastKm: null, lastDate: null },
-  { id: "air-filter", name: "Air filter", category: "Engine", icon: "🌬️", intervalKm: 20000, intervalMonths: 12, lastKm: null, lastDate: null },
-  { id: "wipers", name: "Wiper blades", category: "Exterior", icon: "🌧️", intervalKm: 0, intervalMonths: 12, lastKm: null, lastDate: null }
-];
-
-const initialState = {
-  vehicle: { name: "My Car", model: "", plate: "", odometer: 0 },
-  items: defaultItems,
-  history: []
-};
-
-const $ = (selector, parent = document) => parent.querySelector(selector);
-const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
-
-const cleanText = (value, max, fallback = "") => typeof value === "string" ? value.slice(0, max) : fallback;
-const cleanId = value => {
-  const id = cleanText(value, 100).trim();
-  return id && !/[^A-Za-z0-9_-]/.test(id) ? id : "";
-};
-const cleanIcon = value => {
-  const icon = cleanText(value, 32);
-  return /[<>&"']/.test(icon) ? "" : icon;
-};
-const cleanNumber = (value, max, nullable = false) => {
-  if (value == null && nullable) return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? Math.min(max, Math.max(0, number)) : (nullable ? null : 0);
-};
-const cleanDate = value => {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const date = new Date(`${value}T00:00:00Z`);
-  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value ? value : null;
-};
-
-function normalizeState(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value) || !value.vehicle || typeof value.vehicle !== "object") return null;
-  if (!Array.isArray(value.items) || !Array.isArray(value.history)) return null;
-  const items = value.items.slice(0, 250).flatMap(item => {
-    if (!item || typeof item !== "object" || Array.isArray(item)) return [];
-    const id = cleanId(item.id);
-    const name = cleanText(item.name, 120).trim();
-    if (!id || !name) return [];
-    return [{
-      id,
-      name,
-      category: cleanText(item.category, 40, "Other") || "Other",
-      icon: cleanIcon(item.icon),
-      intervalKm: cleanNumber(item.intervalKm, 1_000_000),
-      intervalMonths: cleanNumber(item.intervalMonths, 1_200),
-      lastKm: cleanNumber(item.lastKm, 10_000_000, true),
-      lastDate: cleanDate(item.lastDate)
-    }];
-  });
-  const history = value.history.slice(0, 5_000).flatMap(record => {
-    if (!record || typeof record !== "object" || Array.isArray(record)) return [];
-    const id = cleanId(record.id);
-    const itemId = cleanId(record.itemId);
-    const name = cleanText(record.name, 120).trim();
-    const date = cleanDate(record.date);
-    if (!id || !itemId || !name || !date) return [];
-    return [{ id, itemId, name, date, mileage: cleanNumber(record.mileage, 10_000_000), cost: cleanNumber(record.cost, 100_000_000), notes: cleanText(record.notes, 2_000) }];
-  });
-  return {
-    vehicle: {
-      name: cleanText(value.vehicle.name, 80, "My Car") || "My Car",
-      model: cleanText(value.vehicle.model, 120),
-      plate: cleanText(value.vehicle.plate, 32),
-      odometer: cleanNumber(value.vehicle.odometer, 10_000_000)
-    },
-    items,
-    history
-  };
+import {money,dateOK,validState,serviceStatus,loanTotals} from './model.js';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const number=n=>new Intl.NumberFormat('en-MY').format(n);
+const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+const date=s=>s?new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(s)):'Not provided';
+let state,revision,documents=[],view='overview',editing,busy=false,deferredInstall;
+const navLabels={overview:'Overview',maintenance:'Maintenance',loan:'Loan & purchase',documents:'Documents',car:'My car'};
+const icon={overview:'⌂',maintenance:'⚙',loan:'◴',documents:'▤',car:'◇'};
+function notify(text){$('#notice').textContent=text;$('#notice').hidden=false;clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('#notice').hidden=true,6000);}
+async function api(path,options={}){
+ let response;
+ try{response=await fetch('/api/'+path,{cache:'no-store',...options});}catch{throw new Error('Connection unavailable. Your changes have not been saved. Please reconnect and try again.');}
+ const data=await response.json().catch(()=>({}));
+ if(response.status===401&&path!=='auth'){lockUI();throw new Error('Please unlock your garage again.');}
+ if(!response.ok)throw new Error(data.error||'Something went wrong. Please try again.');
+ return data;
 }
-
-let state = loadState();
-let activeFilter = "all";
-let deferredInstall;
-const storedUpdatedAt = Number(localStorage.getItem(SYNC_TIME_KEY));
-let lastUpdatedAt = Number.isSafeInteger(storedUpdatedAt) && storedUpdatedAt >= 0 ? storedUpdatedAt : 0;
-let syncTimer;
-let syncInFlight = false;
-
-function loadState() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (!saved) return structuredClone(initialState);
-    return normalizeState(saved) || structuredClone(initialState);
-  } catch {
-    return structuredClone(initialState);
+function lockUI(){state=null;revision=null;documents=[];$('#content').replaceChildren();$('#editor').close();$('#editorForm').replaceChildren();$('#garage').hidden=true;$('#lock').hidden=false;$('#loginForm').reset();}
+async function load(){
+ const [data,files]=await Promise.all([api('state'),api('documents')]);
+ if(!data.state)throw new Error('Your garage is being prepared. Please try again shortly.');
+ if(!validState(data.state))throw new Error('Garage data needs attention. Please contact the app owner.');
+ state=data.state;revision=data.revision;documents=files.documents;
+ $('#lock').hidden=true;$('#garage').hidden=false;$('#loginError').textContent='';render();
+}
+async function save(next){
+ if(busy)return false;busy=true;
+ $('#editorForm button[type=submit]')?.setAttribute('disabled','');
+ try{
+  if(!validState(next))throw new Error('Please check the entered dates and amounts.');
+  const r=await api('state',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({state:next,revision})});
+  state=next;revision=r.revision;render();notify('Saved to your garage');return true;
+ }finally{busy=false;$('#editorForm button[type=submit]')?.removeAttribute('disabled');}
+}
+const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return d?'<a class="source" href="/api/documents/'+id+'" target="_blank" rel="noopener">▤ '+esc(d.filename)+' ↗</a>':'';}).join('');
+const metric=(label,value,sub,tone='')=>'<article class="metric '+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+sub+'</small></article>';
+const heading=(eyebrow,title,copy,action='')=>'<div class="page-head"><div><p class="eyebrow">'+eyebrow+'</p><h1>'+title+'</h1><p>'+copy+'</p></div>'+action+'</div>';
+const empty=(title,copy)=>'<div class="empty"><strong>'+title+'</strong><p>'+copy+'</p></div>';
+function nextCard(){
+ const s=serviceStatus(state,today());
+ return '<section class="card next-card"><div class="section-title"><span class="eyebrow">NEXT SERVICE</span><span class="pill '+s.tone+'">'+s.label+'</span></div><div class="next-grid"><div><small>By date</small><h2>'+date(state.nextService.date)+'</h2></div><span class="or">OR</span><div><small>By odometer</small><h2>'+(state.nextService.mileage==null?'Not provided':number(state.nextService.mileage)+' <small>km</small>')+'</h2></div></div><p>Whichever comes first.</p><div class="callout">'+esc(state.nextService.note||'Add a confirmed service schedule from your workshop.')+'</div><div class="card-bottom"><span>'+(s.km==null?'Mileage target not set':s.km>=0?number(s.km)+' km to the mileage limit':number(-s.km)+' km past the mileage limit')+'</span><button data-edit="schedule" class="text-button">Edit schedule ↗</button></div>'+sourceLinks(state.nextService.documents)+'</section>';
+}
+function serviceCard(s){
+ return '<article class="card service-card"><div class="section-title"><div><p class="eyebrow">'+date(s.date)+' · '+number(s.mileage)+' KM</p><h3>'+esc(s.title)+'</h3></div><strong class="cost">'+money(s.cost)+'</strong></div><p class="preline">'+esc(s.notes)+'</p>'+(s.parts.length?'<details><summary>Parts & charges <span>'+s.parts.length+' items</span></summary><dl class="rows">'+s.parts.map(p=>'<div><dt>'+esc(p.name)+'</dt><dd>'+money(p.amount)+'</dd></div>').join('')+'</dl></details>':'')+'<div class="sources">'+sourceLinks(s.documents)+'</div></article>';
+}
+function render(){
+ if(!state)return;
+ const total=state.services.reduce((sum,x)=>sum+x.cost,0),loan=loanTotals(state);
+ const sorted=[...state.services].sort((a,b)=>b.date.localeCompare(a.date));
+ document.querySelectorAll('[data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===view);b.setAttribute('aria-current',b.dataset.view===view?'page':'false');});
+ $('#breadcrumb').textContent='Your garage / '+navLabels[view];
+ $('#syncStatus').textContent='Saved '+new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(revision));
+ let content='';
+ if(view==='overview'){
+  content=heading('THE ROAD AHEAD','Everything in one place.','A clear picture of your car, its care and its costs.')+
+  '<section class="hero"><div><span class="pill light">YOUR CAR</span><h2>'+esc(state.vehicle.name)+'</h2><p>'+esc(state.vehicle.model)+'</p><div class="hero-tags"><span>'+esc(state.vehicle.plate)+'</span><span>'+esc(state.vehicle.colour)+'</span></div><button data-view="car" class="hero-link">View car details ↗</button></div><div class="car-illustration" aria-hidden="true"><div class="car-roof"></div><div class="car-body"><span></span><i></i></div><div class="wheel one"></div><div class="wheel two"></div><div class="road"></div></div></section>'+
+  '<div class="metrics">'+metric('Maintenance recorded',money(total),state.services.length+' service visits','mint')+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · securely stored')+'</div>'+
+  '<div class="two-col"><div>'+nextCard()+'</div><section class="card loan-preview"><p class="eyebrow">LOAN SNAPSHOT</p><h2>Know where you stand.</h2><dl class="rows"><div><dt>Monthly instalment</dt><dd>'+money(state.loan.monthly)+'</dd></div><div><dt>Lender</dt><dd>'+esc(state.loan.lender||'Not provided')+'</dd></div><div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div></dl><p class="muted">Bank balance and repayment status are not available from the purchase PDFs.</p><button data-view="loan" class="secondary">See loan & purchase ↗</button></section></div>'+
+  '<div class="section-title spaced"><h2>Latest maintenance</h2><button data-view="maintenance" class="text-button">View history ↗</button></div>'+(sorted[0]?serviceCard(sorted[0]):empty('Start your service history','Log your first maintenance visit.'));
+ }
+ if(view==='maintenance'){
+  content=heading('CARE THAT COUNTS','Maintenance','Workshop records, clear costs and your next visit.','<button class="primary" data-edit="service">＋ Log a service</button>')+
+  '<div class="metrics three">'+metric('Total recorded cost',money(total),'Each invoice counted once','mint')+metric('Service visits',String(state.services.length),'Includes no-charge repairs')+metric('Latest recorded mileage',number(state.vehicle.odometer)+' km','As at '+date(state.vehicle.odometerDate))+'</div>'+nextCard()+
+  '<div class="section-title spaced"><h2>Service timeline</h2><span class="muted">Newest first</span></div>'+sorted.map(serviceCard).join('')+
+  '<p class="footnote">Service invoices and their matching e-invoices describe the same visit. Replacement and inspection are kept distinct in the notes.</p>';
+ }
+ if(view==='loan'){
+  const p=state.purchase;
+  content=heading('THE FINANCIAL PICTURE','Loan & purchase','Purchase documents and your own repayment log.','<button class="primary" data-edit="loan">Edit loan details ↗</button>')+
+  '<div class="metrics three">'+metric('Original loan amount',money(p.principal),'Order amount; not today’s balance','mint')+metric('Monthly instalment',money(state.loan.monthly),'Add your bank agreement details')+metric('Next payment date',date(state.loan.nextDate),'Manually confirmed with your bank')+'</div>'+
+  '<div class="two-col"><section class="card"><p class="eyebrow">REPAYMENT DETAILS</p><h2>Your loan at a glance</h2><dl class="rows"><div><dt>Lender</dt><dd>'+esc(state.loan.lender||'Not provided')+'</dd></div><div><dt>Loan term</dt><dd>'+(state.loan.months==null?'Not provided':state.loan.months+' months')+'</dd></div><div><dt>First payment date</dt><dd>'+date(state.loan.firstDate)+'</dd></div><div><dt>Stated annual rate</dt><dd>'+(state.loan.rate==null?'Not provided':state.loan.rate+'%')+'</dd></div><div><dt>Total scheduled instalments</dt><dd>'+money(loan.scheduled)+'</dd></div><div><dt>Payments you logged</dt><dd>'+money(loan.paid)+'</dd></div><div><dt>Unlogged scheduled amount</dt><dd>'+money(loan.remaining)+'</dd></div></dl><p class="footnote">Scheduled totals use monthly instalment × number of months. This is a tracking estimate, not a bank balance or settlement quote. Only payments you record are deducted. Interest is not calculated from the rate.</p><p class="preline">'+esc(state.loan.notes)+'</p></section>'+
+  '<section class="card"><p class="eyebrow">PURCHASE ORDER</p><h2>Where the money went</h2><dl class="rows">'+[['On-road price, without insurance',p.onRoad],['Insurance quoted',p.insurance],['Total purchase price',p.onRoad+p.insurance],['Purchase rebate (already included)',p.rebate],['Booking fee stated in order',p.booking],['Original loan amount',p.principal],['Customer balance in order',p.customerDue],['Deposit receipt',p.depositPaid],['Dealer final payment receipt',p.dealerReceipt]].map(([k,v])=>'<div><dt>'+k+'</dt><dd>'+money(v)+'</dd></div>').join('')+'</dl>'+p.notes.map(n=>'<p class="callout">'+esc(n)+'</p>').join('')+sourceLinks(p.documents)+'</section></div>'+
+  '<div class="section-title spaced"><h2>Repayment log</h2><button class="secondary" data-edit="payment">＋ Record a payment</button></div>'+
+  (state.payments.length?'<div class="card">'+[...state.payments].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>'<div class="payment-row"><div><strong>'+date(p.date)+'</strong><p>'+esc(p.note)+'</p></div><strong>'+money(p.amount)+'</strong></div>').join('')+'</div>':empty('No bank repayments recorded','The dealer’s purchase receipt is separate from your monthly bank repayments.'));
+ }
+ if(view==='documents'){
+  content=heading('THE PAPER TRAIL','Your document library','Original PDFs, ready whenever you need them.','<button class="primary" data-edit="upload">＋ Add a PDF</button>')+
+  '<div class="callout">PDFs are stored privately. Matching files are detected automatically. Uploading a new PDF stores it here; add its details to the service or repayment log separately.</div>'+
+  '<div class="document-tools"><label>Find a document<input type="search" id="documentSearch" placeholder="Search filename or category"></label><label>Category<select id="documentCategory"><option>All</option><option>Service</option><option>Purchase</option><option>Loan</option><option>Other</option></select></label></div><div id="documentList" class="document-grid"></div>';
+ }
+ if(view==='car'){
+  const v=state.vehicle;
+  content=heading('YOUR GARAGE','Car details','Keep the mileage current for useful service reminders.','<button class="primary" data-edit="vehicle">Edit car details ↗</button>')+
+  '<section class="card"><p class="eyebrow">VEHICLE PROFILE</p><h2>'+esc(v.name)+'</h2><dl class="rows">'+[['Model',v.model],['Registration',v.plate],['Colour',v.colour],['VIN',v.vin],['Last recorded mileage',number(v.odometer)+' km'],['Mileage recorded on',date(v.odometerDate)]].map(([k,val])=>'<div><dt>'+k+'</dt><dd>'+esc(val)+'</dd></div>').join('')+'</dl></section>'+
+  '<section class="card spaced"><h2>Your data, together.</h2><p>Changes save to your private garage and are available on your other devices after unlocking. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Download original PDFs from the Documents page.</p></section>';
+ }
+ $('#content').innerHTML=content;if(view==='documents')renderDocuments();
+}
+function renderDocuments(){
+ const query=($('#documentSearch')?.value||'').toLowerCase(),category=$('#documentCategory')?.value||'All';
+ const files=documents.filter(d=>(category==='All'||d.category===category)&&[d.filename,d.category,...d.aliases].join(' ').toLowerCase().includes(query));
+ $('#documentList').innerHTML=files.length?files.map(d=>'<article class="card document-card"><div class="pdf-icon">PDF</div><span class="pill">'+esc(d.category)+'</span><h3>'+esc(d.filename)+'</h3><p>'+number(Math.ceil(d.size/1024))+' KB · Original document</p>'+(d.aliases.length?'<p class="footnote">Duplicate copy: '+d.aliases.map(esc).join(', ')+'</p>':'')+'<a class="secondary" href="/api/documents/'+d.id+'" target="_blank" rel="noopener">Open PDF ↗</a></article>').join(''):empty('No matching documents','Try another search or add a PDF.');
+}
+function field(label,name,value='',type='text',extra=''){
+ return '<label>'+label+'<input name="'+name+'" type="'+type+'" value="'+esc(value??'')+'" '+extra+'></label>';
+}
+function documentSelect(selected=''){return '<label>Supporting PDF (optional)<select name="document"><option value="">None</option>'+documents.map(d=>'<option value="'+d.id+'"'+(d.id===selected?' selected':'')+'>'+esc(d.filename)+'</option>').join('')+'</select></label>';}
+function openEditor(type){
+ if(!state)return;
+ editing=type;let body='',title='';
+ if(type==='vehicle'){title='Edit car details';const v=state.vehicle;body=field('Car nickname','name',v.name,'text','required maxlength="120"')+field('Model','model',v.model,'text','required maxlength="120"')+field('Registration','plate',v.plate,'text','maxlength="120"')+field('Colour','colour',v.colour,'text','maxlength="120"')+field('VIN','vin',v.vin,'text','maxlength="120"')+field('Odometer (km)','odometer',v.odometer,'number','min="0" max="10000000" required')+field('Mileage recorded on','odometerDate',v.odometerDate,'date','required');}
+ if(type==='schedule'){title='Next service';body='<p>Use the exact date and odometer target supplied by your workshop.</p>'+field('Due date','date',state.nextService.date,'date')+field('Due at odometer (km)','mileage',state.nextService.mileage,'number','min="0" max="10000000"')+'<label>Source / notes<textarea name="note" maxlength="2000">'+esc(state.nextService.note)+'</textarea></label>'+documentSelect(state.nextService.documents[0]);}
+ if(type==='service'){title='Log a service';body=field('Service description','title','','text','required maxlength="150"')+field('Date','date',today(),'date','required')+field('Odometer (km)','mileage',state.vehicle.odometer,'number','required min="0" max="10000000"')+field('Total invoice amount (RM)','cost','','number','required min="0" max="100000000" step="0.01"')+'<label>Work performed / notes<textarea name="notes" maxlength="2000"></textarea></label>'+documentSelect()+'<p class="footnote">Record the whole invoice once. Update the next-service schedule separately after this visit.</p>';}
+ if(type==='loan'){title='Loan details';const l=state.loan;body='<p>Enter the agreed terms from your lender. Leave unknown fields blank.</p>'+field('Lender','lender',l.lender,'text','maxlength="120"')+field('Monthly instalment (RM)','monthly',l.monthly,'number','min="0.01" max="100000000" step="0.01"')+field('Loan term (months)','months',l.months,'number','min="1" max="600" step="1"')+field('First payment date','firstDate',l.firstDate,'date')+field('Next payment date (confirmed)','nextDate',l.nextDate,'date')+field('Stated annual rate (%)','rate',l.rate,'number','min="0" max="100" step="0.001"')+'<label>Notes / source<textarea name="notes" maxlength="2000">'+esc(l.notes)+'</textarea></label>';}
+ if(type==='payment'){title='Record a bank repayment';body=field('Payment date','date',today(),'date','required')+field('Amount (RM)','amount',state.loan.monthly,'number','required min="0.01" max="100000000" step="0.01"')+'<label>Bank reference / note<textarea name="note" maxlength="1000"></textarea></label><p class="footnote">Add actual bank repayments only. Recording a payment does not make a bank transfer.</p>';}
+ if(type==='upload'){title='Add a document';body='<label>PDF file<input name="file" type="file" accept=".pdf,application/pdf" required></label><label>Category<select name="category"><option>Service</option><option>Purchase</option><option>Loan</option><option>Other</option></select></label><p class="footnote">PDF only, up to 20 MB. Duplicate PDFs will reuse the existing file.</p>';}
+ $('#editorTitle').textContent=title;$('#editorForm').innerHTML=body+'<p id="formError" role="alert"></p><button class="primary" type="submit">'+(type==='upload'?'Upload PDF':'Save changes')+'</button>';
+ $('#editor').showModal();
+}
+$('#loginForm').addEventListener('submit',async e=>{
+ e.preventDefault();const button=e.currentTarget.querySelector('button');button.disabled=true;
+ try{await api('auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:new FormData(e.currentTarget).get('password')})});e.target.reset();await load();}
+ catch(error){$('#loginError').textContent=error.message;}finally{button.disabled=false;}
+});
+$('#editorForm').addEventListener('submit',async e=>{
+ e.preventDefault();if(busy)return;
+ const f=new FormData(e.currentTarget),value=k=>String(f.get(k)||'').trim(),n=k=>value(k)===''?null:Number(value(k));
+ try{
+  if(editing==='upload'){
+   const file=f.get('file');if(!file||file.size>20*1024*1024)throw new Error('Choose a PDF smaller than 20 MB.');
+   busy=true;e.currentTarget.querySelector('button[type=submit]').disabled=true;
+   try{const r=await api('documents',{method:'POST',headers:{'Content-Type':'application/pdf','X-Filename':encodeURIComponent(file.name),'X-Category':value('category')},body:file});documents=(await api('documents')).documents;render();$('#editor').close();notify(r.duplicate?'This PDF is already in your library.':'PDF safely stored in your library.');}finally{busy=false;}
+   return;
   }
-}
-
-function saveState(message) {
-  state = normalizeState(state) || structuredClone(initialState);
-  lastUpdatedAt = lastUpdatedAt >= Number.MAX_SAFE_INTEGER ? 1 : Math.max(1, lastUpdatedAt + 1);
-  saveLocalCopy();
-  if (message) showToast(message);
-  render();
-  scheduleCloudSave();
-}
-
-function saveLocalCopy() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  localStorage.setItem(SYNC_TIME_KEY, String(lastUpdatedAt));
-}
-
-function scheduleCloudSave() {
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(pushCloudState, 650);
-}
-
-async function pushCloudState() {
-  if (!navigator.onLine || syncInFlight) return;
-  syncInFlight = true;
-  try {
-    const response = await fetch(SYNC_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state, updatedAt: lastUpdatedAt })
-    });
-    const result = await response.json().catch(() => ({}));
-    if (response.status === 409 && result.state) {
-      applyRemoteState(result);
-    } else if (!response.ok) {
-      throw new Error(result.error || "Sync unavailable");
-    } else if (result.updatedAt) {
-      lastUpdatedAt = Number(result.updatedAt);
-      saveLocalCopy();
-    }
-  } catch {
-    // The local copy remains safe and will retry when the app reconnects.
-  } finally {
-    syncInFlight = false;
+  const next=structuredClone(state);
+  if(editing==='vehicle')next.vehicle={name:value('name'),model:value('model'),plate:value('plate'),vin:value('vin'),colour:value('colour'),odometer:n('odometer'),odometerDate:value('odometerDate')};
+  if(editing==='schedule')next.nextService={date:value('date')||null,mileage:n('mileage'),note:value('note'),documents:value('document')?[value('document')]:[]};
+  if(editing==='loan')next.loan={lender:value('lender'),monthly:n('monthly'),months:n('months'),rate:n('rate'),firstDate:value('firstDate')||null,nextDate:value('nextDate')||null,notes:value('notes')};
+  if(editing==='payment')next.payments.push({id:crypto.randomUUID(),date:value('date'),amount:n('amount'),note:value('note')});
+  if(editing==='service'){
+   next.services.push({id:crypto.randomUUID(),title:value('title'),date:value('date'),mileage:n('mileage'),cost:n('cost'),notes:value('notes'),parts:[],documents:value('document')?[value('document')]:[]});
+   if(n('mileage')>=next.vehicle.odometer&&value('date')>=next.vehicle.odometerDate){next.vehicle.odometer=n('mileage');next.vehicle.odometerDate=value('date');}
   }
-}
-
-async function pullCloudState() {
-  if (!navigator.onLine || syncInFlight) return;
-  syncInFlight = true;
-  try {
-    const response = await fetch(SYNC_API, { headers: { Accept: "application/json" }, cache: "no-store" });
-    if (!response.ok) throw new Error("Sync unavailable");
-    const result = await response.json();
-    if (result.state && Number(result.updatedAt) > lastUpdatedAt) {
-      applyRemoteState(result);
-    } else if (!result.state || lastUpdatedAt > Number(result.updatedAt || 0)) {
-      syncInFlight = false;
-      await pushCloudState();
-      return;
-    }
-  } catch {
-    // Work offline without interrupting the user.
-  } finally {
-    syncInFlight = false;
+  if(await save(next))$('#editor').close();
+ }catch(error){const box=$('#formError');if(box)box.textContent=error.message;else notify(error.message);}finally{e.target.querySelector('button[type=submit]')?.removeAttribute('disabled');}
+});
+document.addEventListener('click',async e=>{
+ const go=e.target.closest('[data-view]');if(go){view=go.dataset.view;render();window.scrollTo({top:0});}
+ const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
+ const action=e.target.closest('[data-action]')?.dataset.action;
+ try{
+  if(action==='close'&&!busy)$('#editor').close();
+  if(action==='refresh'){await load();notify('Latest records loaded');}
+  if(action==='lock'){await api('auth',{method:'DELETE'});lockUI();}
+  if(action==='export'){
+   const blob=new Blob([JSON.stringify({state,documents,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pika-garage-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   }
-}
-
-function applyRemoteState(result) {
-  const remote = normalizeState(result.state);
-  if (!remote) return;
-  state = remote;
-  lastUpdatedAt = Number(result.updatedAt) || Date.now();
-  saveLocalCopy();
-  render();
-}
-
-function addMonths(dateString, months) {
-  const date = new Date(`${dateString}T12:00:00`);
-  date.setMonth(date.getMonth() + Number(months));
-  return date;
-}
-
-function itemStatus(item) {
-  if (item.lastKm == null && !item.lastDate) {
-    return { key: "untracked", label: "Not set", detail: "Add your latest service record", score: 3 };
-  }
-
-  const odometer = Number(state.vehicle.odometer) || 0;
-  const kmLeft = item.intervalKm && item.lastKm != null ? item.lastKm + Number(item.intervalKm) - odometer : null;
-  const dueDate = item.intervalMonths && item.lastDate ? addMonths(item.lastDate, item.intervalMonths) : null;
-  const daysLeft = dueDate ? Math.ceil((dueDate - new Date()) / DAY) : null;
-  const overdue = (kmLeft != null && kmLeft <= 0) || (daysLeft != null && daysLeft <= 0);
-  const soon = (kmLeft != null && kmLeft <= Math.max(1000, item.intervalKm * .1)) || (daysLeft != null && daysLeft <= 30);
-
-  let detail = "Up to date";
-  const parts = [];
-  if (kmLeft != null) parts.push(kmLeft <= 0 ? `${formatNumber(Math.abs(kmLeft))} km overdue` : `${formatNumber(kmLeft)} km left`);
-  if (daysLeft != null) parts.push(daysLeft <= 0 ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days left`);
-  if (parts.length) detail = parts.join(" · ");
-
-  if (overdue) return { key: "overdue", label: "Overdue", detail, score: 0 };
-  if (soon) return { key: "soon", label: "Due soon", detail, score: 1 };
-  return { key: "good", label: "Good", detail, score: 2 };
-}
-
-function formatNumber(value) {
-  return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(Number(value) || 0);
-}
-
-function formatMoney(value) {
-  return new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value) || 0);
-}
-
-function formatDate(date) {
-  if (!date) return "";
-  const value = new Date(`${date}T12:00:00`);
-  return Number.isNaN(value.getTime()) ? "" : new Intl.DateTimeFormat("en", { day: "numeric", month: "short", year: "numeric" }).format(value);
-}
-
-function iconFor(category) {
-  return ({ Engine: "⚙️", Tyres: "🛞", Brakes: "🛑", Fluids: "💧", Electrical: "🔋", Exterior: "✨", Other: "🔧" })[category] || "🔧";
-}
-
-function maintenanceMarkup(item) {
-  const status = itemStatus(item);
-  return `
-    <article class="maintenance-item">
-      <span class="maintenance-icon" aria-hidden="true">${escapeHtml(item.icon || iconFor(item.category))}</span>
-      <div class="maintenance-copy">
-        <strong>${escapeHtml(item.name)}</strong>
-        <span>${escapeHtml(status.detail)}</span>
-      </div>
-      <div class="maintenance-actions">
-        <span class="status-pill ${status.key}">${status.label}</span>
-        <button class="done-button" type="button" data-complete="${escapeHtml(item.id)}">Update</button>
-      </div>
-    </article>`;
-}
-
-function render() {
-  const statuses = state.items.map(itemStatus);
-  const attention = statuses.filter(status => status.key === "overdue" || status.key === "soon").length;
-  const good = statuses.filter(status => status.key === "good").length;
-  const now = new Date();
-  const monthSpend = state.history.filter(record => {
-    const date = new Date(`${record.date}T12:00:00`);
-    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-  }).reduce((sum, record) => sum + Number(record.cost || 0), 0);
-
-  $("#vehicleName").textContent = state.vehicle.name || "My Car";
-  $("#vehicleMeta").textContent = [state.vehicle.model, state.vehicle.plate].filter(Boolean).join(" · ") || "Tap to add vehicle details";
-  $("#currentMileage").textContent = formatNumber(state.vehicle.odometer);
-  $("#dueCount").textContent = attention;
-  $("#goodCount").textContent = good;
-  $("#monthSpend").textContent = formatNumber(monthSpend);
-
-  const priority = [...state.items].sort((a, b) => itemStatus(a).score - itemStatus(b).score).slice(0, 3);
-  $("#priorityList").innerHTML = priority.length ? priority.map(maintenanceMarkup).join("") : emptyMarkup("No checklist items", "Add an item to start tracking maintenance.");
-
-  const filtered = state.items.filter(item => {
-    const key = itemStatus(item).key;
-    if (activeFilter === "all") return true;
-    if (activeFilter === "attention") return key === "overdue" || key === "soon";
-    return key === activeFilter;
-  });
-  $("#checklistList").innerHTML = filtered.length ? filtered.map(maintenanceMarkup).join("") : emptyMarkup("Nothing here", "Try another filter or add a maintenance item.");
-
-  const total = state.history.reduce((sum, record) => sum + Number(record.cost || 0), 0);
-  $("#totalSpend").textContent = formatMoney(total);
-  $("#serviceCount").textContent = `${state.history.length} service record${state.history.length === 1 ? "" : "s"}`;
-  $("#historyList").innerHTML = state.history.length ? [...state.history].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).map(historyMarkup).join("") : emptyMarkup("No history yet", "Completed maintenance will appear here.");
-
-  syncVehicleForms();
-}
-
-function historyMarkup(record) {
-  return `<article class="history-item">
-    <div><strong>${escapeHtml(record.name)}</strong><span class="history-meta">${formatDate(record.date)} · ${formatNumber(record.mileage)} km</span></div>
-    <span class="history-cost">﷼ ${formatMoney(record.cost)}</span>
-    ${record.notes ? `<p>${escapeHtml(record.notes)}</p>` : ""}
-  </article>`;
-}
-
-function emptyMarkup(title, copy) {
-  return `<div class="empty-state"><strong>${title}</strong><span>${copy}</span></div>`;
-}
-
-function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
-}
-
-function goTo(view) {
-  $$(".view").forEach(section => section.classList.toggle("active", section.dataset.view === view));
-  $$(".nav-button").forEach(button => button.classList.toggle("active", button.dataset.go === view));
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function openModal(modal) {
-  modal.classList.add("open");
-  modal.setAttribute("aria-hidden", "false");
-  document.body.style.overflow = "hidden";
-  setTimeout(() => $("input:not([type='hidden'])", modal)?.focus(), 50);
-}
-
-function closeModals() {
-  $$(".modal.open").forEach(modal => {
-    modal.classList.remove("open");
-    modal.setAttribute("aria-hidden", "true");
-  });
-  document.body.style.overflow = "";
-}
-
-function openService(itemId) {
-  const item = state.items.find(entry => entry.id === itemId);
-  if (!item) return;
-  const form = $("#serviceForm");
-  $("#serviceTitle").textContent = item.name;
-  form.elements.itemId.value = item.id;
-  form.elements.date.value = new Date().toISOString().slice(0, 10);
-  form.elements.mileage.value = state.vehicle.odometer || item.lastKm || 0;
-  form.elements.cost.value = "";
-  form.elements.notes.value = "";
-  openModal($("#serviceModal"));
-}
-
-function syncVehicleForms() {
-  const form = $("#vehicleFormPage");
-  form.elements.name.value = state.vehicle.name || "";
-  form.elements.model.value = state.vehicle.model || "";
-  form.elements.plate.value = state.vehicle.plate || "";
-  form.elements.odometer.value = state.vehicle.odometer || 0;
-}
-
-function showToast(message) {
-  const toast = $("#toast");
-  toast.textContent = message;
-  toast.classList.add("show");
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => toast.classList.remove("show"), 2200);
-}
-
-document.addEventListener("click", event => {
-  const goButton = event.target.closest("[data-go]");
-  if (goButton) goTo(goButton.dataset.go);
-
-  const complete = event.target.closest("[data-complete]");
-  if (complete) openService(complete.dataset.complete);
-
-  const filter = event.target.closest("[data-filter]");
-  if (filter) {
-    activeFilter = filter.dataset.filter;
-    $$(".filter-chip").forEach(button => button.classList.toggle("active", button === filter));
-    render();
-  }
-
-  if (event.target.closest("[data-close]")) closeModals();
+  if(action==='install'&&deferredInstall){await deferredInstall.prompt();deferredInstall=null;$('#install').hidden=true;}
+ }catch(error){notify(error.message);}
 });
-
-$("#openVehicle").addEventListener("click", () => goTo("car"));
-$("#openAddItem").addEventListener("click", () => {
-  $("#itemForm").reset();
-  openModal($("#itemModal"));
-});
-
-$("#serviceForm").addEventListener("submit", event => {
-  event.preventDefault();
-  const data = new FormData(event.currentTarget);
-  const item = state.items.find(entry => entry.id === data.get("itemId"));
-  if (!item) return;
-  if (state.history.length >= 5_000) return showToast("History limit reached — export a backup before adding more.");
-  const mileage = Math.max(0, Number(data.get("mileage")) || 0);
-  item.lastDate = data.get("date");
-  item.lastKm = mileage;
-  state.vehicle.odometer = Math.max(Number(state.vehicle.odometer) || 0, mileage);
-  state.history.push({ id: crypto.randomUUID?.() || `${Date.now()}`, itemId: item.id, name: item.name, date: item.lastDate, mileage, cost: Math.max(0, Number(data.get("cost")) || 0), notes: String(data.get("notes") || "").trim() });
-  closeModals();
-  saveState(`${item.name} updated`);
-});
-
-$("#itemForm").addEventListener("submit", event => {
-  event.preventDefault();
-  const data = new FormData(event.currentTarget);
-  const name = String(data.get("name") || "").trim();
-  if (!name) return;
-  if (state.items.length >= 250) return showToast("Checklist limit reached.");
-  const category = data.get("category");
-  state.items.push({ id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, name, category, icon: iconFor(category), intervalKm: Math.max(0, Number(data.get("intervalKm")) || 0), intervalMonths: Math.max(0, Number(data.get("intervalMonths")) || 0), lastKm: null, lastDate: null });
-  closeModals();
-  saveState(`${name} added`);
-});
-
-$("#vehicleFormPage").addEventListener("submit", event => {
-  event.preventDefault();
-  const data = new FormData(event.currentTarget);
-  state.vehicle = { name: String(data.get("name") || "My Car").trim(), model: String(data.get("model") || "").trim(), plate: String(data.get("plate") || "").trim().toUpperCase(), odometer: Math.max(0, Number(data.get("odometer")) || 0) };
-  saveState("Car details saved");
-});
-
-$("#exportData").addEventListener("click", () => {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `pika-car-maint-backup-${new Date().toISOString().slice(0, 10)}.json`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-});
-
-$("#importData").addEventListener("change", async event => {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  try {
-    const imported = JSON.parse(await file.text());
-    const normalized = normalizeState(imported);
-    if (!normalized) throw new Error("Invalid backup");
-    state = normalized;
-    saveState("Backup imported");
-  } catch {
-    showToast("That backup file is not valid");
-  }
-  event.target.value = "";
-});
-
-window.addEventListener("beforeinstallprompt", event => {
-  event.preventDefault();
-  deferredInstall = event;
-  $("#installButton").hidden = false;
-});
-
-$("#installButton").addEventListener("click", async () => {
-  if (!deferredInstall) return;
-  deferredInstall.prompt();
-  await deferredInstall.userChoice;
-  deferredInstall = null;
-  $("#installButton").hidden = true;
-});
-
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("sw.js"));
-
-window.addEventListener("online", pullCloudState);
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") pullCloudState();
-});
-setInterval(() => {
-  if (document.visibilityState === "visible") pullCloudState();
-}, 15000);
-
-render();
-pullCloudState();
+document.addEventListener('input',e=>{if(e.target.id==='documentSearch')renderDocuments();});
+document.addEventListener('change',e=>{if(e.target.id==='documentCategory')renderDocuments();});
+$('#editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
+window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
+if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');
+load().catch(error=>{if(!error.message.includes('unlock'))$('#loginError').textContent=error.message;});
