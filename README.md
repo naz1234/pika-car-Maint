@@ -1,6 +1,6 @@
 # Pika Car Maint
 
-A private, mobile-friendly garage for a vehicle's maintenance, purchase, loan and original PDF documents.
+A public, mobile-friendly garage for a vehicle's maintenance, purchase, loan and original PDF documents. It opens directly without a password. Anyone with the link can view and update records, upload PDFs and open the original documents.
 
 Production: https://pika-car-maint.pages.dev
 
@@ -12,33 +12,33 @@ Production: https://pika-car-maint.pages.dev
 - Purchase breakdown separate from the bank repayment log.
 - Editable lender, monthly instalment, term, payment dates and stated rate.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
-- Options tab with a private PDF library, categories, search, upload, SHA-256 deduplication and authenticated downloads.
-- Light and dark modes, remembered on each device and applied before the first paint, including the lock screen.
-- Installable app. Only the static shell is cached; private data and PDFs are never cached by the service worker.
+- Options tab with a public PDF library, categories, search, upload, SHA-256 deduplication and downloads.
+- Light and dark modes, remembered on each device and applied before the first paint.
+- Installable app. Only the static shell is cached; records and PDFs are never cached by the service worker.
 - JSON export of state and document metadata.
 
 ## Cloudflare
 
-`wrangler.jsonc` defines the existing Pages project, D1 binding `DB`, and R2 binding `DOCUMENTS`. The bucket must remain private, with public dev URLs and custom domains disabled. Set `APP_PASSWORD` as a Cloudflare Pages secret; never commit it.
+`wrangler.jsonc` defines the existing Pages project, D1 binding `DB`, and R2 binding `DOCUMENTS`. The R2 bucket has public dev URLs and custom domains disabled; the app serves its PDFs publicly through `/api/documents/:id`. No password or authentication secret is required.
 
 Build command: `node scripts/build.mjs`. Output directory: `dist`. Only allowlisted browser assets are included, excluding source files, tests, PDFs, secrets and imports. Pages compiles `functions/` separately. GitHub `main` remains connected to the existing project.
 
-New installation: apply `schema.sql` and `migrations/0002_garage.sql`, bind D1/R2, set the secret, import validated version-2 JSON into `app_state` under id `garage-v2` with a millisecond timestamp, then upload PDFs through the authenticated app.
+New installation: apply `schema.sql` and `migrations/0002_garage.sql`, bind D1/R2, import validated version-2 JSON into `app_state` under id `garage-v2` with a millisecond timestamp, then upload PDFs through the app.
 
 The original `app_state.shared` record remains unchanged as the legacy backup. Personal records and PDFs are not in this repository.
 
 ## Security and saving
 
-All `/api/*` routes require a server session except the login POST. Login attempts are rate limited. Cookies are Secure, HttpOnly and SameSite=Strict. Mutations require a matching Origin. State writes use a D1 revision comparison to reject stale edits. Failed saves stay visible in the form.
+All data and document routes are public. Mutations require a matching Origin, which prevents cross-site browser submissions but does not restrict who can edit this public app. State writes use a D1 revision comparison to reject stale edits. Failed saves stay visible in the form.
 
-Locking deletes the session and clears displayed data. Private data stays in memory only. Sessions last 30 days. Rotating the password does not revoke existing sessions: clear `garage_sessions` to revoke them. Missing bindings or secrets fail closed.
+The app no longer creates or checks sessions. Historical session tables from migration 0002 and any existing `APP_PASSWORD` secret are unused. No data migration is required for existing installations. Missing storage bindings return an unavailable response; loading errors offer a retry.
 
 ## Development
 
 Requires Node.js 24+ for SQLite-backed tests.
 
-- `npm test`: validation, schedule and loan totals, authentication, origin checks, rate limits, stale writes, PDF validation, deduplication and retrieval.
+- `npm test`: validation, schedule and loan totals, public access without sessions or secrets, origin checks, stale writes, PDF validation, deduplication and retrieval.
 - `npm run build`: assemble browser assets.
-- `npx wrangler pages dev dist`: local runtime; use local D1/R2 and `.dev.vars`, never production bindings for test data.
+- `npx wrangler pages dev dist`: local runtime; use local D1/R2, never production bindings for test data.
 
 New PDF uploads store documents. Log their financial or service details separately, attaching the supporting PDF.

@@ -11,17 +11,19 @@ async function api(path,options={}){
  let response;
  try{response=await fetch('/api/'+path,{cache:'no-store',...options});}catch{throw new Error('Connection unavailable. Your changes have not been saved. Please reconnect and try again.');}
  const data=await response.json().catch(()=>({}));
- if(response.status===401&&path!=='auth'){lockUI();throw new Error('Please unlock your garage again.');}
  if(!response.ok)throw new Error(data.error||'Something went wrong. Please try again.');
  return data;
 }
-function lockUI(){state=null;revision=null;documents=[];$('#content').replaceChildren();$('#editor').close();$('#editorForm').replaceChildren();$('#garage').hidden=true;$('#lock').hidden=false;$('#loginForm').reset();}
+function showLoadError(error){
+ $('#content').innerHTML='<section class="card" role="alert"><h1>Unable to load your garage</h1><p>'+esc(error.message)+'</p><button class="primary" data-action="refresh">Try again ↻</button></section>';
+ $('#syncStatus').textContent='Records unavailable';
+}
 async function load(){
  const [data,files]=await Promise.all([api('state'),api('documents')]);
  if(!data.state)throw new Error('Your garage is being prepared. Please try again shortly.');
  if(!validState(data.state))throw new Error('Garage data needs attention. Please contact the app owner.');
  state=data.state;revision=data.revision;documents=files.documents;
- $('#lock').hidden=true;$('#garage').hidden=false;$('#loginError').textContent='';render();
+ render();
 }
 async function save(next){
  if(busy)return false;busy=true;
@@ -55,7 +57,7 @@ function render(){
  if(view==='overview'){
   content=heading('THE ROAD AHEAD','Everything in one place.','A clear picture of your car, its care and its costs.')+
   '<section class="hero"><div><span class="pill light">YOUR CAR</span><h2>'+esc(state.vehicle.name)+'</h2><p>'+esc(state.vehicle.model)+'</p><div class="hero-tags"><span>'+esc(state.vehicle.plate)+'</span><span>'+esc(state.vehicle.colour)+'</span></div><button data-view="car" class="hero-link">View car details ↗</button></div><div class="car-illustration" aria-hidden="true"><div class="car-roof"></div><div class="car-body"><span></span><i></i></div><div class="wheel one"></div><div class="wheel two"></div><div class="road"></div></div></section>'+
-  '<div class="metrics">'+metric('Maintenance recorded',money(total),state.services.length+' service visits','mint')+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · securely stored')+'</div>'+
+  '<div class="metrics">'+metric('Maintenance recorded',money(total),state.services.length+' service visits','mint')+metric('Original loan amount',money(state.purchase.principal),'From the purchase order')+metric('Last recorded mileage',number(state.vehicle.odometer)+' <small>km</small>','As at '+date(state.vehicle.odometerDate))+metric('Document library',String(documents.length),'Unique PDFs · publicly accessible')+'</div>'+
   '<div class="two-col"><div>'+nextCard()+'</div><section class="card loan-preview"><p class="eyebrow">LOAN SNAPSHOT</p><h2>Know where you stand.</h2><dl class="rows"><div><dt>Monthly instalment</dt><dd>'+money(state.loan.monthly)+'</dd></div><div><dt>Lender</dt><dd>'+esc(state.loan.lender||'Not provided')+'</dd></div><div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div></dl><p class="muted">Bank balance and repayment status are not available from the purchase PDFs.</p><button data-view="loan" class="secondary">See loan & purchase ↗</button></section></div>'+
   '<div class="section-title spaced"><h2>Latest maintenance</h2><button data-view="maintenance" class="text-button">View history ↗</button></div>'+(sorted[0]?serviceCard(sorted[0]):empty('Start your service history','Log your first maintenance visit.'));
  }
@@ -78,18 +80,18 @@ function render(){
   content=heading('MAKE IT YOURS','Options','Choose your appearance and find your documents.')+
   '<section class="card options-section" aria-labelledby="appearanceTitle"><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">Light or dark, your choice.</h2><p>Choose a look for this device. Your choice is remembered.</p><div class="theme-options" role="group" aria-label="Colour mode">'+
   ['light','dark'].map(theme=>'<button class="theme-choice" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(window.PikaTheme.get()===theme)+'"><span class="theme-swatch '+theme+'" aria-hidden="true"><span class="swatch-nav"></span><span class="swatch-card"></span><span class="swatch-card"></span></span><span class="theme-label">'+(theme==='light'?'☀ Light':'☾ Dark')+'<span class="theme-check" aria-hidden="true">✓</span></span></button>').join('')+
-  '</div></section><section class="card options-section spaced" aria-labelledby="optionsDocumentsTitle"><p class="eyebrow">DOCUMENTS</p><h2 id="optionsDocumentsTitle">Your paperwork, close by.</h2><p>Open your receipts, invoices and purchase documents, or add a new PDF.</p><button class="option-link" type="button" data-view="documents"><span class="option-icon" aria-hidden="true">▤</span><span><strong>Document library</strong><small>'+documents.length+' unique PDFs · securely stored</small></span><span aria-hidden="true">↗</span></button></section>';
+  '</div></section><section class="card options-section spaced" aria-labelledby="optionsDocumentsTitle"><p class="eyebrow">DOCUMENTS</p><h2 id="optionsDocumentsTitle">Your paperwork, close by.</h2><p>Open your receipts, invoices and purchase documents, or add a new PDF.</p><button class="option-link" type="button" data-view="documents"><span class="option-icon" aria-hidden="true">▤</span><span><strong>Document library</strong><small>'+documents.length+' unique PDFs · available to everyone</small></span><span aria-hidden="true">↗</span></button></section>';
  }
  if(view==='documents'){
   content='<button class="text-button back-button" data-view="options" type="button">← Back to Options</button>'+heading('THE PAPER TRAIL','Your document library','Original PDFs, ready whenever you need them.','<button class="primary" data-edit="upload">＋ Add a PDF</button>')+
-  '<div class="callout">PDFs are stored privately. Matching files are detected automatically. Uploading a new PDF stores it here; add its details to the service or repayment log separately.</div>'+
+  '<div class="callout">PDFs in this library are publicly accessible. Matching files are detected automatically. Uploading a new PDF stores it here; add its details to the service or repayment log separately.</div>'+
   '<div class="document-tools"><label>Find a document<input type="search" id="documentSearch" placeholder="Search filename or category"></label><label>Category<select id="documentCategory"><option>All</option><option>Service</option><option>Purchase</option><option>Loan</option><option>Other</option></select></label></div><div id="documentList" class="document-grid"></div>';
  }
  if(view==='car'){
   const v=state.vehicle;
   content=heading('YOUR GARAGE','Car details','Keep the mileage current for useful service reminders.','<button class="primary" data-edit="vehicle">Edit car details ↗</button>')+
   '<section class="card"><p class="eyebrow">VEHICLE PROFILE</p><h2>'+esc(v.name)+'</h2><dl class="rows">'+[['Model',v.model],['Registration',v.plate],['Colour',v.colour],['VIN',v.vin],['Last recorded mileage',number(v.odometer)+' km'],['Mileage recorded on',date(v.odometerDate)]].map(([k,val])=>'<div><dt>'+k+'</dt><dd>'+esc(val)+'</dd></div>').join('')+'</dl></section>'+
-  '<section class="card spaced"><h2>Your data, together.</h2><p>Changes save to your private garage and are available on your other devices after unlocking. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Download original PDFs from Options → Document library.</p></section>';
+  '<section class="card spaced"><h2>Your data, together.</h2><p>This garage is public. Anyone with the link can view and update the records. Changes save across devices. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Download original PDFs from Options → Document library.</p></section>';
  }
  $('#content').innerHTML=content;if(view==='documents')renderDocuments();
 }
@@ -110,15 +112,10 @@ function openEditor(type){
  if(type==='service'){title='Log a service';body=field('Service description','title','','text','required maxlength="150"')+field('Date','date',today(),'date','required')+field('Odometer (km)','mileage',state.vehicle.odometer,'number','required min="0" max="10000000"')+field('Total invoice amount (RM)','cost','','number','required min="0" max="100000000" step="0.01"')+'<label>Work performed / notes<textarea name="notes" maxlength="2000"></textarea></label>'+documentSelect()+'<p class="footnote">Record the whole invoice once. Update the next-service schedule separately after this visit.</p>';}
  if(type==='loan'){title='Loan details';const l=state.loan;body='<p>Enter the agreed terms from your lender. Leave unknown fields blank.</p>'+field('Lender','lender',l.lender,'text','maxlength="120"')+field('Monthly instalment (RM)','monthly',l.monthly,'number','min="0.01" max="100000000" step="0.01"')+field('Loan term (months)','months',l.months,'number','min="1" max="600" step="1"')+field('First payment date','firstDate',l.firstDate,'date')+field('Next payment date (confirmed)','nextDate',l.nextDate,'date')+field('Stated annual rate (%)','rate',l.rate,'number','min="0" max="100" step="0.001"')+'<label>Notes / source<textarea name="notes" maxlength="2000">'+esc(l.notes)+'</textarea></label>';}
  if(type==='payment'){title='Record a bank repayment';body=field('Payment date','date',today(),'date','required')+field('Amount (RM)','amount',state.loan.monthly,'number','required min="0.01" max="100000000" step="0.01"')+'<label>Bank reference / note<textarea name="note" maxlength="1000"></textarea></label><p class="footnote">Add actual bank repayments only. Recording a payment does not make a bank transfer.</p>';}
- if(type==='upload'){title='Add a document';body='<label>PDF file<input name="file" type="file" accept=".pdf,application/pdf" required></label><label>Category<select name="category"><option>Service</option><option>Purchase</option><option>Loan</option><option>Other</option></select></label><p class="footnote">PDF only, up to 20 MB. Duplicate PDFs will reuse the existing file.</p>';}
+ if(type==='upload'){title='Add a document';body='<label>PDF file<input name="file" type="file" accept=".pdf,application/pdf" required></label><label>Category<select name="category"><option>Service</option><option>Purchase</option><option>Loan</option><option>Other</option></select></label><p class="footnote">Uploaded PDFs are publicly accessible. PDF only, up to 20 MB. Duplicate PDFs will reuse the existing file.</p>';}
  $('#editorTitle').textContent=title;$('#editorForm').innerHTML=body+'<p id="formError" role="alert"></p><button class="primary" type="submit">'+(type==='upload'?'Upload PDF':'Save changes')+'</button>';
  $('#editor').showModal();
 }
-$('#loginForm').addEventListener('submit',async e=>{
- e.preventDefault();const button=e.currentTarget.querySelector('button');button.disabled=true;
- try{await api('auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:new FormData(e.currentTarget).get('password')})});e.target.reset();await load();}
- catch(error){$('#loginError').textContent=error.message;}finally{button.disabled=false;}
-});
 $('#editorForm').addEventListener('submit',async e=>{
  e.preventDefault();if(busy)return;
  const f=new FormData(e.currentTarget),value=k=>String(f.get(k)||'').trim(),n=k=>value(k)===''?null:Number(value(k));
@@ -149,13 +146,12 @@ document.addEventListener('click',async e=>{
  try{
   if(action==='close'&&!busy)$('#editor').close();
   if(action==='refresh'){await load();notify('Latest records loaded');}
-  if(action==='lock'){await api('auth',{method:'DELETE'});lockUI();}
   if(action==='export'){
    const blob=new Blob([JSON.stringify({state,documents,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pika-garage-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   }
   if(action==='install'&&deferredInstall){await deferredInstall.prompt();deferredInstall=null;$('#install').hidden=true;}
- }catch(error){notify(error.message);}
+ }catch(error){if(!state)showLoadError(error);else notify(error.message);}
 });
 window.addEventListener('pika-theme-change',()=>{
  document.querySelectorAll('[data-theme-choice]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.themeChoice===window.PikaTheme.get())));
@@ -166,4 +162,4 @@ $('#editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
 window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
 if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');
-load().catch(error=>{if(!error.message.includes('unlock'))$('#loginError').textContent=error.message;});
+load().catch(showLoadError);
