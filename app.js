@@ -1,5 +1,6 @@
 import {money,dateOK,validState,serviceStatus,loanTotals} from './model.js';
 import {openDocument} from './pdf-viewer.js';
+import {startAutoUpdates} from './updates.js';
 // Keep mobile page zoom fixed. The PDF reader handles its own pinch zoom.
 for(const type of ['gesturestart','gesturechange'])document.addEventListener(type,e=>{if(e.cancelable)e.preventDefault();},{passive:false});
 for(const type of ['touchstart','touchmove'])document.addEventListener(type,e=>{if(e.touches.length>1&&e.cancelable)e.preventDefault();},{passive:false});
@@ -82,7 +83,8 @@ function render(){
  }
  if(view==='options'){
   content=heading('MAKE IT YOURS','Options','Choose your appearance and find your documents.')+
-  '<section class="card options-section" aria-labelledby="appearanceTitle"><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">Light or dark, your choice.</h2><p>Choose a look for this device. Your choice is remembered.</p><div class="theme-options" role="group" aria-label="Colour mode">'+
+  '<section class="card options-section"><p class="eyebrow">APP UPDATES</p><h2>Always up to date.</h2><p>New versions load automatically. If you’re editing or reading a PDF, the update waits until you finish.</p></section>'+
+  '<section class="card options-section spaced" aria-labelledby="appearanceTitle"><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">Light or dark, your choice.</h2><p>Choose a look for this device. Your choice is remembered.</p><div class="theme-options" role="group" aria-label="Colour mode">'+
   ['light','dark'].map(theme=>'<button class="theme-choice" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(window.PikaTheme.get()===theme)+'"><span class="theme-swatch '+theme+'" aria-hidden="true"><span class="swatch-nav"></span><span class="swatch-card"></span><span class="swatch-card"></span></span><span class="theme-label">'+(theme==='light'?'☀ Light':'☾ Dark')+'<span class="theme-check" aria-hidden="true">✓</span></span></button>').join('')+
   '</div></section><section class="card options-section spaced" aria-labelledby="optionsDocumentsTitle"><p class="eyebrow">DOCUMENTS</p><h2 id="optionsDocumentsTitle">Your paperwork, close by.</h2><p>Open your receipts, invoices and purchase documents, or add a new PDF.</p><button class="option-link" type="button" data-view="documents"><span class="option-icon" aria-hidden="true">▤</span><span><strong>Document library</strong><small>'+documents.length+' unique PDFs · available to everyone</small></span><span aria-hidden="true">↗</span></button></section>';
  }
@@ -166,5 +168,24 @@ document.addEventListener('change',e=>{if(e.target.id==='documentCategory')rende
 $('#editor').addEventListener('cancel',e=>{if(busy)e.preventDefault();});
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
 window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
-if('serviceWorker' in navigator)navigator.serviceWorker.register('/sw.js');
-load().catch(showLoadError);
+startAutoUpdates({
+ canReload:()=>!busy&&!document.querySelector('dialog[open]'),
+ onPending:()=>notify('An update is ready. It will apply after you finish.'),
+ beforeReload:()=>sessionStorage.setItem('pika-update-view',JSON.stringify({view,scroll:window.scrollY,search:$('#documentSearch')?.value,category:$('#documentCategory')?.value}))
+});
+async function start(){
+ let restored;
+ try{restored=JSON.parse(sessionStorage.getItem('pika-update-view'));sessionStorage.removeItem('pika-update-view');}catch{}
+ if(restored&&Object.hasOwn(navLabels,restored.view))view=restored.view;
+ await load();
+ if(restored){
+  if(view==='documents'){
+   if(typeof restored.search==='string')$('#documentSearch').value=restored.search;
+   if(['All','Service','Purchase','Loan','Other'].includes(restored.category))$('#documentCategory').value=restored.category;
+   renderDocuments();
+  }
+  requestAnimationFrame(()=>window.scrollTo(0,Number.isFinite(restored.scroll)?restored.scroll:0));
+  notify('App updated');
+ }
+}
+start().catch(showLoadError);
