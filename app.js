@@ -44,6 +44,15 @@ const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return 
 const metric=(label,value,sub,tone='')=>'<article class="metric '+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+sub+'</small></article>';
 const heading=(eyebrow,title,copy,action='')=>'<div class="page-head"><div><p class="eyebrow">'+eyebrow+'</p><h1>'+title+'</h1><p>'+copy+'</p></div>'+action+'</div>';
 const empty=(title,copy)=>'<div class="empty"><strong>'+title+'</strong><p>'+copy+'</p></div>';
+const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({
+ service:'<path d="m14 6 4-4a6 6 0 0 1-7 8L5 16a2.1 2.1 0 0 0 3 3l6-6a6 6 0 0 0 8-7l-4 4z"/>',
+ fuel:'<path d="M4 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17M3 21h12M4 10h10M7 6h4M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0V9l-4-4M19 6v4h3"/>',
+ document:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h4"/>',
+ calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18m-13 5 3 3 5-5"/>',
+ car:'<path d="m5 8 2-5h10l2 5 2 3v7H3v-7zM5 8h14M3 14h18M6 18v3m12-3v3M6 11h2m8 0h2"/>',
+ arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>',
+ options:'<path d="M4 7h3m6 0h7M4 17h7m6 0h3"/><circle cx="10" cy="7" r="3"/><circle cx="14" cy="17" r="3"/>'
+}[name]||'')+'</svg>';
 function loanTermsRows(l){
  const rate=l.rate==null?'Not provided':number(l.rate)+'%'+(l.rateType?' · '+l.rateType:'');
  return [['Lender',l.lender||'Not provided'],['Loan term',l.months==null?'Not provided':l.months+' months'],['Monthly instalment',money(l.monthly)],['Final instalment',money(l.finalInstalment)],['First payment date',date(l.firstDate)],['Next payment date',date(l.nextDate)],['Stated effective annual rate',rate],...(l.referenceRate!=null?[['Reference rate in agreement',number(l.referenceRate)+'%']]:[]),...(l.margin!=null?[['Margin over reference rate',number(l.margin)+' percentage points']]:[]),['Term charges in agreement',money(l.termCharges)],['Original agreement total',money(l.agreementTotal)]].map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('');
@@ -91,7 +100,10 @@ function openOriginalLoan(){
 function nextServiceRow(){
  const s=serviceStatus(state,today());
  const due=[state.nextService.date?date(state.nextService.date):null,state.nextService.mileage==null?null:number(state.nextService.mileage)+' km'].filter(Boolean).join(' or ')||'Schedule not provided';
- return '<div class="service-list"><button class="service-row next-service-row" type="button" data-action="next-service" aria-haspopup="dialog"><span class="service-row-main"><strong>Next service</strong><span class="service-row-date">'+due+'</span></span><span class="pill '+s.tone+'">'+s.label+'</span><span class="service-row-arrow" aria-hidden="true">›</span></button></div>';
+ const days=s.days==null?null:s.days<0?number(-s.days)+' days overdue':s.days===0?'Due today':number(s.days)+' days away';
+ const distance=s.km==null?null:s.km<0?number(-s.km)+' km past target':s.km===0?'Mileage target reached':number(s.km)+' km to target';
+ const remaining=[days,distance].filter(Boolean).join(' · ')||'Add your workshop’s date or mileage target';
+ return '<button class="maintenance-next" type="button" data-action="next-service" aria-haspopup="dialog"><span class="maintenance-next-icon">'+icon('calendar')+'</span><span class="maintenance-next-main"><span class="maintenance-next-top"><span>Next service</span><span class="pill '+(s.days==null&&s.km==null?'':s.tone)+'">'+s.label+'</span></span><strong>'+due+'</strong><small>'+remaining+'</small></span><span class="maintenance-next-arrow" aria-hidden="true">›</span></button>';
 }
 function renderNextServiceDetails(){
  const s=serviceStatus(state,today());
@@ -114,18 +126,21 @@ function openLoanSnapshot(){
 function serviceRow(s){
  return '<button class="service-row" type="button" data-service="'+esc(s.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(s.date)+' · '+number(s.mileage)+' km</span><strong>'+esc(s.title)+'</strong></span><strong class="service-row-cost">'+money(s.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
 }
+function renderMaintenance(total,sorted){
+ const v=state.vehicle;
+ return `<div class="maintenance-dashboard">
+  <header class="maintenance-heading"><div><p class="eyebrow">THE CARE JOURNAL</p><h1>Maintenance</h1></div><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log service</button><p>Your service history and next visit.</p></header>
+  ${nextServiceRow()}
+  <section class="maintenance-summary" aria-label="Maintenance summary">
+   <button class="maintenance-totals" type="button" data-action="maintenance-recorded" aria-haspopup="dialog"><span><span>Total recorded</span><strong>${money(total)}</strong></span><span><span>Service visits</span><strong>${number(state.services.length)}</strong></span><span class="maintenance-summary-arrow" aria-hidden="true">›</span></button>
+   <button class="maintenance-mileage" type="button" data-edit="vehicle" aria-haspopup="dialog"><span class="maintenance-mileage-icon">${icon('car')}</span><span><strong>${number(v.odometer)} km recorded</strong><small>As at ${date(v.odometerDate)}</small></span><span class="maintenance-mileage-action">Update ${icon('arrow')}</span></button>
+  </section>
+  <section class="maintenance-history" aria-labelledby="maintenanceHistoryTitle"><div class="section-title"><h2 id="maintenanceHistoryTitle">Service history</h2><span>Newest first</span></div>${sorted.length?'<div class="service-list">'+sorted.map(serviceRow).join('')+'</div>':empty('No services recorded yet','Log a service to start your maintenance history.')}</section>
+ </div>`;
+}
 function renderOverview(total,sorted,loan){
  const v=state.vehicle,schedule=state.nextService,status=serviceStatus(state,today());
  const month=today().slice(0,7),fuel=fuelSummary(state.fuelEntries||[],month);
- const icon=(name)=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({
-  service:'<path d="m14 6 4-4a6 6 0 0 1-7 8L5 16a2.1 2.1 0 0 0 3 3l6-6a6 6 0 0 0 8-7l-4 4z"/>',
-  fuel:'<path d="M4 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17M3 21h12M4 10h10M7 6h4M14 13h2a2 2 0 0 1 2 2v2a2 2 0 0 0 4 0V9l-4-4M19 6v4h3"/>',
-  document:'<path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h4"/>',
-  calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18m-13 5 3 3 5-5"/>',
-  car:'<path d="m5 8 2-5h10l2 5 2 3v7H3v-7zM5 8h14M3 14h18M6 18v3m12-3v3M6 11h2m8 0h2"/>',
-  arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>',
-  options:'<path d="M4 7h3m6 0h7M4 17h7m6 0h3"/><circle cx="10" cy="7" r="3"/><circle cx="14" cy="17" r="3"/>'
- }[name]||'')+'</svg>';
  const distance=status.km==null?'Add a mileage target':status.km<0?number(-status.km)+' km past the mileage target':status.km===0?'Mileage target reached':number(status.km)+' km to the mileage target';
  const days=status.days==null?'Date not set':status.days<0?number(-status.days)+' days overdue':status.days===0?'Due today':number(status.days)+' days away';
  const stat=(symbol,label,value,copy,attributes)=>'<button class="overview-stat" type="button" '+attributes+'><span class="overview-stat-top"><span class="overview-icon">'+icon(symbol)+'</span><span>'+label+'</span>'+icon('arrow')+'</span><strong>'+value+'</strong><small>'+copy+'</small></button>';
@@ -181,10 +196,7 @@ function render(){
   content=renderOverview(total,sorted,loan);
  }
  if(view==='maintenance'){
-  content=heading('CARE THAT COUNTS','Maintenance','Workshop records, clear costs and your next visit.','<button class="primary" data-edit="service">＋ Log a service</button>')+
-  '<div class="metrics three">'+metric('Total recorded cost',money(total),'Each invoice counted once','mint')+metric('Service visits',String(state.services.length),'Includes no-charge repairs')+metric('Latest recorded mileage',number(state.vehicle.odometer)+' km','As at '+date(state.vehicle.odometerDate))+'</div>'+nextServiceRow()+
-  '<div class="section-title spaced"><h2>Service timeline</h2><span class="muted">Newest first</span></div>'+(sorted.length?'<div class="service-list">'+sorted.map(serviceRow).join('')+'</div>':empty('Start your service history','Log your first maintenance visit.'))+
-  '<p class="footnote">Service invoices and their matching e-invoices describe the same visit. Replacement and inspection are kept distinct in the notes.</p>';
+  content=renderMaintenance(total,sorted);
  }
  if(view==='loan'){
   const p=state.purchase;

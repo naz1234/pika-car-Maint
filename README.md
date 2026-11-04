@@ -10,6 +10,7 @@ Production: https://pika-car-maint.pages.dev
 - Fuel economy (km/L and L/100 km) uses complete full-to-full intervals, including intervening partial fills. Missing litres or backwards mileage break the measurement chain. Monthly economy uses intervals ending in that month, which can span a month boundary.
 - Overview dashboard with an illustrated vehicle card, documented mileage, a prominent date/mileage service reminder, monthly fuel spending, recent maintenance and purchase financing. Quick actions open service, fill-up, mileage and document forms. The current-month fuel shortcut also works before the first fill-up is logged.
 - Maintenance recorded opens the total, visit count and individual service costs in a popup. Open any service for its full record/PDFs, or go to Maintenance and log a new visit.
+- Compact Maintenance dashboard with the next-service date/mileage and countdown, one spend/visit summary, a mileage update shortcut and divided service-history rows. Desktop places the history beside the summary; mobile keeps it below. Totals and schedules open their full details in popups.
 - Vehicle card at the top of Overview. Open Car details for the full model, registration, colour, VIN and recorded mileage, with editing and access to My car in the popup.
 - Compact service rows show the date, mileage, title and cost. Tap a row for a popup with the full work notes, parts and source PDFs; PDF Back returns to those details.
 - Explicit next-service date and odometer target; whichever comes first.
