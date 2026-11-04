@@ -17,6 +17,7 @@ Production: https://pika-car-maint.pages.dev
 - Mobile app screens stay at normal scale. PDF pinch gestures zoom the document itself, so the toolbar and the garage stay at normal size when returning. Mobile form controls use 16px text to avoid focus zoom.
 - Light and dark modes, remembered on each device and applied before the first paint.
 - Installable app. Only the static shell is cached; records and PDFs are never cached by the service worker.
+- Automatic app updates check every minute while visible, and on returning to the app or reconnecting. Updates wait for open forms, uploads and PDF reading to finish, then restore the current tab, document filters and scroll position.
 - JSON export of state and document metadata.
 
 ## Cloudflare
@@ -24,6 +25,8 @@ Production: https://pika-car-maint.pages.dev
 `wrangler.jsonc` defines the existing Pages project, D1 binding `DB`, and R2 binding `DOCUMENTS`. The R2 bucket has public dev URLs and custom domains disabled; the app serves its PDFs publicly through `/api/documents/:id`. No password or authentication secret is required.
 
 Build command: `node scripts/build.mjs`. Output directory: `dist`. Only allowlisted browser assets are included, excluding source files, tests, PDFs, secrets and imports. Pages compiles `functions/` separately. GitHub `main` remains connected to the existing project.
+
+The build generates a deterministic app version in the HTML, service-worker cache name and `version.json`. Client code or dependency changes automatically produce a new version, with no manual cache bump. The version endpoint is never cached. Existing versions without the updater need one initial refresh to install it; later releases apply automatically at a safe point.
 
 New installation: apply `schema.sql` and `migrations/0002_garage.sql`, bind D1/R2, import validated version-2 JSON into `app_state` under id `garage-v2` with a millisecond timestamp, then upload PDFs through the app.
 
