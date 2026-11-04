@@ -135,7 +135,7 @@ function renderOverview(total,sorted,loan){
    <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
     <div class="vehicle-card-top"><span class="eyebrow">IN YOUR GARAGE</span><span class="registration">${esc(v.plate||'Registration not provided')}</span></div>
     <h2 id="overviewVehicleTitle">${esc(v.name)}</h2><p class="vehicle-model">${esc(v.model)}</p>
-    <img class="overview-car-art" src="/assets/garage-car.svg" alt="" width="600" height="230">
+    <img class="overview-car-art" src="/assets/garage-car-red-mica.svg" alt="Red Mica Metallic car illustration" width="600" height="230">
     <div class="vehicle-card-bottom"><div><span>Recorded mileage</span><strong>${number(v.odometer)} <small>km</small></strong><small>As at ${date(v.odometerDate)}</small></div><button data-action="car-profile" class="vehicle-details" aria-haspopup="dialog">Car details ${icon('arrow')}</button></div>
    </section>
    <section class="overview-schedule" aria-labelledby="overviewScheduleTitle">
