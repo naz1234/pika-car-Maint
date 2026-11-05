@@ -11,8 +11,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const number=n=>new Intl.NumberFormat('en-MY').format(n);
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const date=s=>s?new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(s)):'Not provided';
-let state,revision,documents=[],tips=[],tipsUnavailable=false,view='overview',editing,busy=false,deferredInstall,fuelMonth='',editingFuelId=null;
-const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel consumption',loan:'Loan & purchase',documents:'Overview / Options / Documents',car:'Overview / My car',options:'Overview / Options',tips:'Car tips'};
+let state,revision,documents=[],tips=[],tipsUnavailable=false,view='overview',editing,busy=false,deferredInstall,fuelMonth='',editingFuelId=null,fuelDetailsId=null;
+const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel',loan:'Loan & purchase',documents:'Overview / Options / Documents',car:'Overview / My car',options:'Overview / Options',tips:'Car tips'};
 function notify(text){$('#notice').textContent=text;$('#notice').hidden=false;clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('#notice').hidden=true,6000);}
 async function api(path,options={}){
  let response;
@@ -42,7 +42,6 @@ async function save(next){
  }finally{busy=false;$('#editorForm button[type=submit]')?.removeAttribute('disabled');}
 }
 const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return d?'<button class="source" type="button" data-document="'+id+'">▤ '+esc(d.filename)+'</button>':'';}).join('');
-const metric=(label,value,sub,tone='')=>'<article class="metric '+tone+'"><span>'+label+'</span><strong>'+value+'</strong><small>'+sub+'</small></article>';
 const heading=(eyebrow,title,copy,action='')=>'<div class="page-head"><div><p class="eyebrow">'+eyebrow+'</p><h1>'+title+'</h1><p>'+copy+'</p></div>'+action+'</div>';
 const empty=(title,copy)=>'<div class="empty"><strong>'+title+'</strong><p>'+copy+'</p></div>';
 const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({
@@ -278,20 +277,40 @@ function field(label,name,value='',type='text',extra=''){
 }
 function documentSelect(selected=''){return '<label>Supporting PDF (optional)<select name="document"><option value="">None</option>'+documents.map(d=>'<option value="'+d.id+'"'+(d.id===selected?' selected':'')+'>'+esc(d.filename)+'</option>').join('')+'</select></label>';}
 function monthLabel(month){return month==='all'?'All months':new Intl.DateTimeFormat('en-GB',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01'));}
+function fuelRow(entry){
+ return '<button class="service-row" type="button" data-fuel="'+esc(entry.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(entry.date)+'</span><strong>'+esc(entry.station)+'</strong></span><strong class="service-row-cost">'+money(entry.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
+}
+function renderFuelDetails(){
+ const entry=(state.fuelEntries||[]).find(e=>e.id===fuelDetailsId);
+ if(!entry){$('#fuelDetails').close();return false;}
+ const decimal=n=>new Intl.NumberFormat('en-MY',{maximumFractionDigits:3}).format(n);
+ $('#fuelDetailsTitle').textContent=entry.station;
+ $('#fuelDetailsBody').innerHTML='<div class="service-detail-meta"><span>'+date(entry.date)+'</span><strong>'+money(entry.cost)+'</strong></div>'+((entry.litres!=null||entry.odometer!=null||entry.fullTank)?'<dl class="rows">'+(entry.litres!=null?'<div><dt>Litres</dt><dd>'+decimal(entry.litres)+' L</dd></div>':'')+(entry.odometer!=null?'<div><dt>Odometer</dt><dd>'+number(entry.odometer)+' km</dd></div>':'')+(entry.fullTank?'<div><dt>Tank</dt><dd>Filled to full</dd></div>':'')+'</dl>':'')+(entry.notes?'<section><h3>Notes / source</h3><p class="preline">'+esc(entry.notes)+'</p></section>':'')+'<div class="profile-actions"><button class="secondary" type="button" data-fuel-edit="'+esc(entry.id)+'">Edit fill-up ↗</button></div>';
+ return true;
+}
+function openFuelDetails(id){
+ fuelDetailsId=id;
+ if(renderFuelDetails()){$('#fuelDetailsBody').scrollTop=0;$('#fuelDetails').showModal();}
+}
+function openFuelSpending(){
+ const entries=state.fuelEntries||[],months=fuelMonths(entries);
+ if(fuelMonth!=='all'&&fuelMonth&&!months.includes(fuelMonth))months.unshift(fuelMonth);
+ const total=fuelSummary(entries),maxSpend=Math.max(1,...months.map(m=>fuelSummary(entries,m).total));
+ const row=(month,summary)=>'<button class="fuel-month" type="button" data-fuel-month="'+month+'" aria-pressed="'+(fuelMonth===month)+'"><span><strong>'+monthLabel(month)+'</strong><small>'+number(summary.count)+' '+(summary.count===1?'fill-up':'fill-ups')+'</small></span><strong>'+money(summary.total)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span>'+(month==='all'?'':'<meter min="0" max="'+maxSpend+'" value="'+summary.total+'" aria-label="'+monthLabel(month)+' fuel spending"></meter>')+'</button>';
+ $('#fuelSpendingBody').innerHTML='<p class="footnote">Choose a month to see its fill-ups. Spending uses transaction dates.</p><div class="fuel-months">'+row('all',total)+months.map(m=>row(m,fuelSummary(entries,m))).join('')+'</div>';
+ $('#fuelSpendingBody').scrollTop=0;$('#fuelSpendingDetails').showModal();
+}
 function renderFuel(){
  const entries=state.fuelEntries||[],months=fuelMonths(entries);
  // The Overview shortcut can open the current month before its first fill-up.
  if(fuelMonth===today().slice(0,7)&&!months.includes(fuelMonth))months.unshift(fuelMonth);
  if(!fuelMonth || (fuelMonth!=='all'&&!months.includes(fuelMonth)))fuelMonth=months[0]||'all';
  const summary=fuelSummary(entries,fuelMonth),selected=entries.filter(e=>fuelMonth==='all'||e.date.startsWith(fuelMonth+'-')).sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
- const decimal=n=>new Intl.NumberFormat('en-MY',{maximumFractionDigits:2}).format(n);
- const maxSpend=Math.max(1,...months.map(m=>fuelSummary(entries,m).total));
- return heading('EVERY FILL, IN VIEW','Fuel consumption','Track your refuelling, monthly spend and measured fuel economy.','<button class="primary" data-edit="fuel">＋ Log a fill-up</button>')+
-  '<div class="fuel-filter"><label>Show month<select id="fuelMonth"><option value="all"'+(fuelMonth==='all'?' selected':'')+'>All months</option>'+months.map(m=>'<option value="'+m+'"'+(fuelMonth===m?' selected':'')+'>'+monthLabel(m)+'</option>').join('')+'</select></label><p>Grouped by transaction date.</p></div>'+
-  '<div class="metrics three">'+metric('Fuel spend',money(summary.total),monthLabel(fuelMonth),'mint')+metric('Fill-ups',String(summary.count),'Recorded fuel transactions')+metric('Average per fill-up',money(summary.average),'Based on recorded payments')+'</div>'+
-  '<div class="two-col"><section class="card"><p class="eyebrow">FUEL ECONOMY</p><h2>'+(summary.kmPerLitre==null?'Ready when you have the readings':decimal(summary.kmPerLitre)+' km/L')+'</h2><dl class="rows"><div><dt>Consumption</dt><dd>'+(summary.litresPer100km==null?'Not available':decimal(summary.litresPer100km)+' L/100 km')+'</dd></div><div><dt>Litres recorded</dt><dd>'+(summary.litres==null?'Not provided':decimal(summary.litres)+' L')+'</dd></div><div><dt>Distance measured</dt><dd>'+(summary.distance==null?'Not available':decimal(summary.distance)+' km')+'</dd></div></dl><p class="footnote">Add receipt litres and odometer readings, and mark a full tank when applicable. Economy uses complete full-to-full intervals, including partial fills, ending in the selected month. Missing litres break the calculation.</p>'+(summary.missingLitres?'<p class="callout">'+summary.missingLitres+' fill-ups have no litre reading. Amounts alone cannot tell us fuel consumption.</p>':'')+'</section>'+
-  '<section class="card"><p class="eyebrow">MONTH BY MONTH</p><h2>Your fuel spending</h2>'+(months.length?'<div class="fuel-months">'+months.map(m=>{const s=fuelSummary(entries,m);return '<button type="button" class="fuel-month" data-fuel-month="'+m+'" aria-pressed="'+(fuelMonth===m)+'"><span><strong>'+monthLabel(m)+'</strong><strong>'+money(s.total)+'</strong></span><small>'+s.count+' fill-ups</small><meter min="0" max="'+maxSpend+'" value="'+s.total+'" aria-label="'+monthLabel(m)+' fuel spend"></meter></button>';}).join('')+'</div>':empty('No fuel records yet','Log a fill-up to start tracking.'))+'</section></div>'+
-  '<div class="section-title spaced"><h2>Fill-up history</h2><span class="muted">Newest first</span></div>'+(selected.length?'<div class="service-list">'+selected.map(e=>'<button class="service-row" type="button" data-fuel-edit="'+esc(e.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(e.date)+(e.fullTank?' · Full tank':'')+'</span><strong>'+esc(e.station)+'</strong><span class="service-row-date">'+(e.litres==null?'Litres not recorded':decimal(e.litres)+' L')+' · '+(e.odometer==null?'Odometer not recorded':number(e.odometer)+' km')+'</span></span><strong class="service-row-cost">'+money(e.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>').join('')+'</div>':empty('No fill-ups this month','Choose another month or log a fill-up.'));
+ return `<div class="fuel-dashboard">
+  <header class="fuel-heading"><div><p class="eyebrow">EVERY FILL, IN VIEW</p><h1>Fuel</h1></div><button class="primary" data-edit="fuel">＋ Log fill-up</button><p>Your fuel spending and fill-up history.</p></header>
+  <section class="fuel-summary" aria-label="Fuel spending summary"><div class="fuel-summary-main"><div class="fuel-summary-top"><span>Fuel spent</span><label class="fuel-period"><span>Show month</span><select id="fuelMonth"><option value="all"${fuelMonth==='all'?' selected':''}>All months</option>${months.map(m=>'<option value="'+m+'"'+(fuelMonth===m?' selected':'')+'>'+monthLabel(m)+'</option>').join('')}</select></label></div><strong class="fuel-spend">${money(summary.total)}</strong><dl class="fuel-summary-stats"><div><dt>Fill-ups</dt><dd>${number(summary.count)}</dd></div><div><dt>Average per fill-up</dt><dd>${summary.average==null?'—':money(summary.average)}</dd></div></dl></div><button class="fuel-breakdown" type="button" data-action="fuel-spending" aria-haspopup="dialog"><span>${icon('calendar')} Monthly breakdown</span><span aria-hidden="true">›</span></button></section>
+  <section class="fuel-history" aria-labelledby="fuelHistoryTitle"><div class="section-title"><h2 id="fuelHistoryTitle">Fill-up history</h2><span>Newest first</span></div>${selected.length?'<div class="service-list">'+selected.map(fuelRow).join('')+'</div>':empty(entries.length?'No fill-ups this month':'No fill-ups yet',entries.length?'Choose another month or log a fill-up.':'Log a fill-up to start your fuel history.')}</section>
+ </div>`;
 }
 function openEditor(type,fuelId=null){
  if(!state)return;
@@ -345,12 +364,13 @@ $('#editorForm').addEventListener('submit',async e=>{
 document.addEventListener('click',async e=>{
  const tipPhoto=e.target.closest('[data-tip-photo]');if(tipPhoto){const tip=tips.find(t=>t.id===tipPhoto.dataset.tipPhoto);if(tip)openTipPhoto(tip);return;}
  const tip=e.target.closest('[data-tip]');if(tip){openTip(tip.dataset.tip);return;}
+ const fuelDetails=e.target.closest('[data-fuel]');if(fuelDetails){openFuelDetails(fuelDetails.dataset.fuel);return;}
  const fuel=e.target.closest('[data-fuel-edit]');if(fuel){openEditor('fuel',fuel.dataset.fuelEdit);return;}
- const month=e.target.closest('[data-fuel-month]');if(month){fuelMonth=month.dataset.fuelMonth;render();return;}
+ const month=e.target.closest('[data-fuel-month]');if(month){fuelMonth=month.dataset.fuelMonth;$('#fuelSpendingDetails').close();render();$('#fuelMonth').focus({preventScroll:true});return;}
  const service=e.target.closest('[data-service]');if(service){openService(service.dataset.service);return;}
  const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
- const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','loanPaymentsDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails','tipDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}if(go.hasAttribute('data-current-fuel'))fuelMonth=today().slice(0,7);view=go.dataset.view;render();window.scrollTo({top:0});}
+ const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','loanPaymentsDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails','tipDetails','fuelDetails','fuelSpendingDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}if(go.hasAttribute('data-current-fuel'))fuelMonth=today().slice(0,7);view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
  try{
@@ -358,6 +378,9 @@ document.addEventListener('click',async e=>{
   if(action==='close'&&!busy)$('#editor').close();
   if(action==='close-service')$('#serviceDetails').close();
   if(action==='close-tip')$('#tipDetails').close();
+  if(action==='close-fuel')$('#fuelDetails').close();
+  if(action==='fuel-spending')openFuelSpending();
+  if(action==='close-fuel-spending')$('#fuelSpendingDetails').close();
   if(action==='next-service')openNextService();
   if(action==='close-next-service')$('#nextServiceDetails').close();
   if(action==='loan-snapshot')openLoanSnapshot();
@@ -391,6 +414,7 @@ $('#editor').addEventListener('close',()=>{
  if($('#maintenanceRecordedDetails').open){renderMaintenanceRecordedDetails();$('#maintenanceRecordedDetails [data-edit="service"]').focus({preventScroll:true});}
  if($('#loanSnapshotDetails').open){renderLoanSnapshotDetails();$('#loanSnapshotDetails [data-edit="loan"]').focus({preventScroll:true});}
  if($('#loanPaymentsDetails').open){renderLoanPaymentsDetails();$('#loanPaymentsDetails [data-edit="payment"]').focus({preventScroll:true});}
+ if($('#fuelDetails').open&&renderFuelDetails())$('#fuelDetails [data-fuel-edit]').focus({preventScroll:true});
 });
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
 window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
