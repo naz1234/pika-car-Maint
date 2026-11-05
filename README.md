@@ -15,10 +15,10 @@ Production: https://pika-car-maint.pages.dev
 - Compact service rows show the date, mileage, title and cost. Tap a row for a popup with the full work notes, parts and source PDFs; PDF Back returns to those details.
 - Explicit next-service date and odometer target; whichever comes first.
 - Overview highlights both next-service targets, days to the date and distance from the last recorded mileage. Maintenance keeps a compact schedule row. Both open the full date/mileage schedule, status, workshop notes, supporting PDF and edit option in a popup.
-- Purchase breakdown separate from the bank repayment log.
+- Compact Loan & purchase dashboard with the monthly instalment and term, original financing, logged repayment total and recent payments. Tap for full loan terms, purchase costs/receipts and original PDFs, or the complete repayment log. Desktop places repayments beside the summary; mobile stacks them below.
 - Overview's Purchase & loan panel opens the original financing, price breakdown, receipt notes and supporting PDFs. PDF Back returns to those details, with a link to Loan & purchase.
-- Repayments logged opens the loan snapshot with the original loan amount, lender, monthly instalment, next payment date and repayments logged, plus a link to Loan & purchase.
-- Editable lender, monthly and final instalments, term, payment dates, effective annual rate, fixed/variable rate type, reference rate, margin, original agreement total and term charges. Linked loan PDFs open from the loan page and snapshot popup.
+- Overview's Repayments logged opens the loan snapshot with the original loan amount, lender, monthly instalment and repayments logged, plus a link to Loan & purchase.
+- Editable lender, monthly and final instalments, term, effective annual rate, fixed/variable rate type, reference rate, margin, original agreement total and term charges. Linked loan PDFs open from the snapshot popup. Loan screens and forms omit repayment schedule dates; the payment log records the dates of actual repayments.
 - Scheduled totals use the monthly amount for all but the final month, then the final instalment when supplied. Original agreement figures are shown separately; variable-rate terms may change. Dates and actual repayments are never inferred from an agreement.
 - Unknown terms stay unknown. Scheduled totals are tracking estimates, not bank balances.
 - My car and Options buttons on Overview open the full vehicle details and appearance/document settings. Both include Back to Overview, and the main navigation has five tabs: Overview, Maintenance, Fuel, Loan & purchase and Car tips. The public PDF library supports categories, search, upload, SHA-256 deduplication and document viewing.
