@@ -109,8 +109,8 @@ html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 .overview-actions svg{width:16px;height:16px}
 .overview-sections{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start;min-width:0}
 .overview-section-photo img{height:228px}
-.section-loan .overview-section-photo img{object-position:50% 94%}
-.section-tips .overview-section-photo img{object-position:50% 85%}
+.section-loan .overview-section-photo img,
+.section-tips .overview-section-photo img{height:auto;aspect-ratio:3/2;object-fit:contain;object-position:center}
 .overview-section-footer{border-top:1px solid var(--line)}
 .overview-section-metric{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;min-height:72px;width:100%;padding:13px 18px;background:transparent;color:var(--ink);text-align:left}
 .overview-section-metric+.overview-section-metric{border-top:1px solid var(--line)}
@@ -400,8 +400,8 @@ input::placeholder,textarea::placeholder{color:var(--muted);opacity:1}
 .pictured-heading>p{grid-column:1/3;grid-row:2;align-self:start;width:auto;font-size:12px;margin:0}
 .dashboard-scene{grid-column:3;grid-row:1/3;margin:0;min-width:0;overflow:hidden;border:1px solid var(--line);border-radius:15px;background:var(--accent-soft);box-shadow:var(--shadow)}
 .dashboard-scene img{display:block;width:100%;height:156px;object-fit:cover;object-position:50% 55%}
-.scene-loan img{object-position:50% 94%}
-.scene-tips img{object-position:50% 85%}
+.dashboard-scene.scene-loan img,
+.dashboard-scene.scene-tips img{height:auto;aspect-ratio:3/2;object-fit:contain;object-position:center}
 .tips-heading{margin-bottom:20px}
 .tips-heading .eyebrow{font-size:9px;letter-spacing:1.6px;margin-bottom:7px}
 .tips-heading h1{font-size:34px;letter-spacing:-1.2px;margin:0}
