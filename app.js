@@ -56,7 +56,7 @@ const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 }[name]||'')+'</svg>';
 function loanTermsRows(l){
  const rate=l.rate==null?'Not provided':number(l.rate)+'%'+(l.rateType?' · '+l.rateType:'');
- return [['Lender',l.lender||'Not provided'],['Loan term',l.months==null?'Not provided':l.months+' months'],['Monthly instalment',money(l.monthly)],['Final instalment',money(l.finalInstalment)],['First payment date',date(l.firstDate)],['Next payment date',date(l.nextDate)],['Stated effective annual rate',rate],...(l.referenceRate!=null?[['Reference rate in agreement',number(l.referenceRate)+'%']]:[]),...(l.margin!=null?[['Margin over reference rate',number(l.margin)+' percentage points']]:[]),['Term charges in agreement',money(l.termCharges)],['Original agreement total',money(l.agreementTotal)]].map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('');
+ return [['Lender',l.lender||'Not provided'],['Loan term',l.months==null?'Not provided':l.months+' months'],['Monthly instalment',money(l.monthly)],['Final instalment',money(l.finalInstalment)],['Stated effective annual rate',rate],...(l.referenceRate!=null?[['Reference rate in agreement',number(l.referenceRate)+'%']]:[]),...(l.margin!=null?[['Margin over reference rate',number(l.margin)+' percentage points']]:[]),['Term charges in agreement',money(l.termCharges)],['Original agreement total',money(l.agreementTotal)]].map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+esc(value)+'</dd></div>').join('');
 }
 function loanScheduleNote(l){
  const calculation=l.finalInstalment!=null?'Scheduled totals use the monthly instalment for all but the final month, then the final instalment.':'Scheduled totals use the monthly instalment × number of months.';
@@ -92,10 +92,12 @@ function openMaintenanceRecorded(){
 function originalLoanRow(){
  return '<div class="service-list"><button class="service-row" type="button" data-action="original-loan" aria-haspopup="dialog"><span class="service-row-main"><strong>Original loan amount</strong><span class="service-row-date">From the purchase order</span></span><strong class="service-row-cost">'+money(state.purchase.principal)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button></div>';
 }
-function openOriginalLoan(){
+function openOriginalLoan(title='Original loan amount'){
  if(!state)return;
  const p=state.purchase;
+ $('#originalLoanTitle').textContent=title;
  $('#originalLoanBody').innerHTML='<div class="service-detail-meta"><span>Original financing</span><strong>'+money(p.principal)+'</strong></div><p class="footnote">Original financed amount from the supporting documents. Open Loan & purchase for repayment terms and logged payments. This amount is not the current bank balance.</p><section><h3>Purchase breakdown</h3><dl class="rows">'+[['On-road price, without insurance',p.onRoad],['Insurance quoted',p.insurance],['Total purchase price',p.onRoad+p.insurance],['Purchase rebate (already included)',p.rebate],['Booking fee stated in order',p.booking],['Customer balance in order',p.customerDue],['Deposit receipt',p.depositPaid],['Dealer final payment receipt',p.dealerReceipt]].map(([label,value])=>'<div><dt>'+label+'</dt><dd>'+money(value)+'</dd></div>').join('')+'</dl></section>'+p.notes.map(note=>'<p class="callout">'+esc(note)+'</p>').join('')+(p.documents.length?'<section><h3>Supporting documents</h3><div class="sources">'+sourceLinks(p.documents)+'</div></section>':'')+'<div class="profile-actions"><button class="secondary" data-view="loan">See loan & purchase ↗</button></div>';
+ if(view==='loan')$('#originalLoanBody .profile-actions').remove();
  $('#originalLoanDetails').showModal();$('#originalLoanBody').scrollTop=0;
 }
 function nextServiceRow(){
@@ -118,11 +120,43 @@ function loanSnapshotRow(){
  const monthly=state.loan.monthly==null?'Monthly instalment not provided':money(state.loan.monthly)+' / month';
  return '<div class="service-list"><button class="service-row" type="button" data-action="loan-snapshot" aria-haspopup="dialog"><span class="service-row-main"><strong>Loan snapshot</strong><span class="service-row-date">'+monthly+'</span></span><span class="loan-row-total"><strong>'+money(loanTotals(state).paid)+'</strong><small>Repayments logged</small></span><span class="service-row-arrow" aria-hidden="true">›</span></button></div>';
 }
+function renderLoanSnapshotDetails(){
+ const loan=loanTotals(state);
+ $('#loanSnapshotBody').innerHTML='<dl class="rows"><div><dt>Original loan amount</dt><dd>'+money(state.purchase.principal)+'</dd></div>'+loanTermsRows(state.loan)+'</dl><section><h3>Repayment tracking</h3><dl class="rows"><div><dt>Total scheduled instalments</dt><dd>'+money(loan.scheduled)+'</dd></div><div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div><div><dt>Unlogged scheduled amount</dt><dd>'+money(loan.remaining)+'</dd></div></dl>'+loanScheduleNote(state.loan)+'</section>'+loanSources(state.loan)+'<div class="profile-actions"><button data-edit="loan" class="secondary">Edit loan details ↗</button>'+(view!=='loan'?'<button data-view="loan" class="text-button">See loan & purchase ↗</button>':'')+'</div>';
+}
 function openLoanSnapshot(){
  if(!state)return;
- const loan=loanTotals(state);
- $('#loanSnapshotBody').innerHTML='<dl class="rows"><div><dt>Original loan amount</dt><dd>'+money(state.purchase.principal)+'</dd></div>'+loanTermsRows(state.loan)+'<div><dt>Repayments logged</dt><dd>'+money(loan.paid)+'</dd></div></dl>'+loanScheduleNote(state.loan)+loanSources(state.loan)+'<button data-view="loan" class="secondary">See loan & purchase ↗</button>';
+ renderLoanSnapshotDetails();
  $('#loanSnapshotBody').scrollTop=0;$('#loanSnapshotDetails').showModal();
+}
+function repaymentRow(p,compact=false){
+ const content='<span><strong>'+date(p.date)+'</strong><small>'+esc(p.note||'Bank repayment')+'</small></span><strong>'+money(p.amount)+'</strong>';
+ return compact?'<button class="loan-payment-row" type="button" data-action="loan-payments" aria-haspopup="dialog">'+content+'<span aria-hidden="true">›</span></button>':'<div class="loan-payment-row full">'+content+'</div>';
+}
+function renderLoanPaymentsDetails(){
+ const payments=[...state.payments].sort((a,b)=>b.date.localeCompare(a.date));
+ $('#loanPaymentsBody').innerHTML='<div class="service-detail-meta"><span>'+number(payments.length)+' '+(payments.length===1?'payment':'payments')+' logged</span><strong>'+money(loanTotals(state).paid)+'</strong></div><p class="footnote">Your record of bank repayments. Dealer purchase receipts are separate.</p>'+(payments.length?'<div class="loan-payments-list">'+payments.map(p=>repaymentRow(p)).join('')+'</div>':empty('No payments logged','Add a bank repayment to start your history.'))+'<div class="profile-actions"><button class="primary" data-edit="payment">＋ Record a payment</button></div>';
+}
+function openLoanPayments(){
+ if(!state)return;
+ renderLoanPaymentsDetails();$('#loanPaymentsBody').scrollTop=0;$('#loanPaymentsDetails').showModal();
+}
+function renderLoan(loan){
+ const l=state.loan,p=state.purchase,payments=[...state.payments].sort((a,b)=>b.date.localeCompare(a.date));
+ const term=l.months==null?'Term not provided':number(l.months)+' months';
+ const rateType=l.rateType==='variable'?'Variable rate':l.rateType==='fixed'?'Fixed rate':'';
+ return `<div class="loan-dashboard">
+  <header class="loan-heading"><div><p class="eyebrow">THE FINANCIAL PICTURE</p><h1>Loan & purchase</h1></div><button class="secondary" data-edit="loan" aria-label="Edit loan details">${icon('options')} Edit</button><p>Your payment plan and purchase records.</p></header>
+  <div class="loan-plan">
+   <button class="loan-instalment" type="button" data-action="loan-snapshot" aria-haspopup="dialog"><span class="loan-lender"><span>${esc(l.lender||'Lender not provided')}</span><span class="pill">${term}</span></span><span class="loan-monthly-label">Monthly instalment</span><strong class="loan-monthly">${money(l.monthly)}${l.monthly==null?'':'<small>/ month</small>'}</strong><span class="loan-plan-bottom"><small>${l.finalInstalment==null?esc(rateType||'From your lender’s terms'):'Final instalment '+money(l.finalInstalment)}</small><span>Loan details ${icon('arrow')}</span></span></button>
+   <section class="loan-summary" aria-label="Financing summary">
+    <div class="loan-totals"><button type="button" data-action="original-loan" aria-haspopup="dialog"><span>Original loan</span><strong>${money(p.principal)}</strong><small>Original financing</small></button><button type="button" data-action="loan-payments" aria-haspopup="dialog"><span>Repayments logged</span><strong>${money(loan.paid)}</strong><small>${number(payments.length)} ${payments.length===1?'payment':'payments'} added</small></button></div>
+    <button class="loan-purchase-link" type="button" data-action="purchase-details" aria-haspopup="dialog"><span class="loan-document-icon">${icon('document')}</span><span><strong>Purchase breakdown</strong><small>Price, receipts & original PDFs</small></span><span aria-hidden="true">›</span></button>
+   </section>
+   <p class="loan-balance-note">Recorded amounts, not a current bank balance.</p>
+  </div>
+  <section class="loan-history" aria-labelledby="loanRepaymentTitle"><div class="section-title"><h2 id="loanRepaymentTitle">Repayment log</h2><button class="primary" data-edit="payment">＋ Record payment</button></div>${payments.length?'<div class="loan-payments-list">'+payments.slice(0,3).map(p=>repaymentRow(p,true)).join('')+'</div><button class="loan-history-link text-button" type="button" data-action="loan-payments" aria-haspopup="dialog">View all '+number(payments.length)+' '+(payments.length===1?'payment':'payments')+icon('arrow')+'</button>':'<div class="loan-empty"><span class="loan-empty-icon">'+icon('calendar')+'</span><div><strong>No payments logged</strong><p>Add a bank repayment to start your history.</p></div></div>'}<p class="loan-history-note">Bank repayments only. Dealer receipts stay in Purchase breakdown.</p></section>
+ </div>`;
 }
 function serviceRow(s){
  return '<button class="service-row" type="button" data-service="'+esc(s.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(s.date)+' · '+number(s.mileage)+' km</span><strong>'+esc(s.title)+'</strong></span><strong class="service-row-cost">'+money(s.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
@@ -212,13 +246,7 @@ function render(){
   content=renderMaintenance(total,sorted);
  }
  if(view==='loan'){
-  const p=state.purchase;
-  content=heading('THE FINANCIAL PICTURE','Loan & purchase','Purchase documents and your own repayment log.','<button class="primary" data-edit="loan">Edit loan details ↗</button>')+
-  '<div class="metrics three">'+metric('Original loan amount',money(p.principal),'Original financing; not today’s balance','mint')+metric('Monthly instalment',money(state.loan.monthly),state.loan.finalInstalment!=null?'Final instalment: '+money(state.loan.finalInstalment):'From your lender’s terms')+metric('Next payment date',date(state.loan.nextDate),'Manually confirmed with your bank')+'</div>'+
-  '<div class="two-col"><section class="card"><p class="eyebrow">REPAYMENT DETAILS</p><h2>Your loan at a glance</h2><dl class="rows">'+loanTermsRows(state.loan)+'<div><dt>Total scheduled instalments</dt><dd>'+money(loan.scheduled)+'</dd></div><div><dt>Payments you logged</dt><dd>'+money(loan.paid)+'</dd></div><div><dt>Unlogged scheduled amount</dt><dd>'+money(loan.remaining)+'</dd></div></dl>'+loanScheduleNote(state.loan)+'<p class="preline">'+esc(state.loan.notes)+'</p>'+loanSources(state.loan)+'</section>'+
-  '<section class="card"><p class="eyebrow">PURCHASE ORDER</p><h2>Where the money went</h2><dl class="rows">'+[['On-road price, without insurance',p.onRoad],['Insurance quoted',p.insurance],['Total purchase price',p.onRoad+p.insurance],['Purchase rebate (already included)',p.rebate],['Booking fee stated in order',p.booking],['Original loan amount',p.principal],['Customer balance in order',p.customerDue],['Deposit receipt',p.depositPaid],['Dealer final payment receipt',p.dealerReceipt]].map(([k,v])=>'<div><dt>'+k+'</dt><dd>'+money(v)+'</dd></div>').join('')+'</dl>'+p.notes.map(n=>'<p class="callout">'+esc(n)+'</p>').join('')+sourceLinks(p.documents)+'</section></div>'+
-  '<div class="section-title spaced"><h2>Repayment log</h2><button class="secondary" data-edit="payment">＋ Record a payment</button></div>'+
-  (state.payments.length?'<div class="card">'+[...state.payments].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>'<div class="payment-row"><div><strong>'+date(p.date)+'</strong><p>'+esc(p.note)+'</p></div><strong>'+money(p.amount)+'</strong></div>').join('')+'</div>':empty('No bank repayments recorded','The dealer’s purchase receipt is separate from your monthly bank repayments.'));
+  content=renderLoan(loan);
  }
  if(view==='options'){
   content='<button class="text-button back-button" data-view="overview" type="button">← Back to Overview</button>'+heading('MAKE IT YOURS','Options','Choose your appearance and find your documents.')+
@@ -278,7 +306,7 @@ function openEditor(type,fuelId=null){
  if(type==='service'){title='Log a service';body=field('Service description','title','','text','required maxlength="150"')+field('Date','date',today(),'date','required')+field('Odometer (km)','mileage',state.vehicle.odometer,'number','required min="0" max="10000000"')+field('Total invoice amount (RM)','cost','','number','required min="0" max="100000000" step="0.01"')+'<label>Work performed / notes<textarea name="notes" maxlength="2000"></textarea></label>'+documentSelect()+'<p class="footnote">Record the whole invoice once. Update the next-service schedule separately after this visit.</p>';}
  if(type==='loan'){
   title='Loan details';const l=state.loan;
-  body='<p>Enter the agreed terms from your lender. Leave unknown fields blank.</p>'+field('Lender','lender',l.lender,'text','maxlength="120"')+field('Monthly instalment (RM)','monthly',l.monthly,'number','min="0.01" max="100000000" step="0.01"')+field('Loan term (months)','months',l.months,'number','min="1" max="600" step="1"')+field('Final instalment (RM, if different)','finalInstalment',l.finalInstalment,'number','min="0" max="100000000" step="0.01"')+field('First payment date','firstDate',l.firstDate,'date')+field('Next payment date (confirmed)','nextDate',l.nextDate,'date')+field('Stated effective annual rate (%)','rate',l.rate,'number','min="0" max="100" step="0.001"')+'<label>Rate type<select name="rateType">'+[['','Not provided'],['fixed','Fixed'],['variable','Variable']].map(([v,label])=>'<option value="'+v+'"'+((l.rateType||'')===v?' selected':'')+'>'+label+'</option>').join('')+'</select></label>'+field('Reference rate in agreement (%)','referenceRate',l.referenceRate,'number','min="0" max="100" step="0.001"')+field('Margin over reference rate (percentage points)','margin',l.margin,'number','min="0" max="100" step="0.001"')+field('Term charges in agreement (RM)','termCharges',l.termCharges,'number','min="0" max="100000000" step="0.01"')+field('Original agreement total (RM)','agreementTotal',l.agreementTotal,'number','min="0" max="100000000" step="0.01"')+'<label>Notes / source<textarea name="notes" maxlength="2000">'+esc(l.notes)+'</textarea></label>';
+  body='<p>Enter the agreed terms from your lender. Leave unknown fields blank.</p>'+field('Lender','lender',l.lender,'text','maxlength="120"')+field('Monthly instalment (RM)','monthly',l.monthly,'number','min="0.01" max="100000000" step="0.01"')+field('Loan term (months)','months',l.months,'number','min="1" max="600" step="1"')+field('Final instalment (RM, if different)','finalInstalment',l.finalInstalment,'number','min="0" max="100000000" step="0.01"')+field('Stated effective annual rate (%)','rate',l.rate,'number','min="0" max="100" step="0.001"')+'<label>Rate type<select name="rateType">'+[['','Not provided'],['fixed','Fixed'],['variable','Variable']].map(([v,label])=>'<option value="'+v+'"'+((l.rateType||'')===v?' selected':'')+'>'+label+'</option>').join('')+'</select></label>'+field('Reference rate in agreement (%)','referenceRate',l.referenceRate,'number','min="0" max="100" step="0.001"')+field('Margin over reference rate (percentage points)','margin',l.margin,'number','min="0" max="100" step="0.001"')+field('Term charges in agreement (RM)','termCharges',l.termCharges,'number','min="0" max="100000000" step="0.01"')+field('Original agreement total (RM)','agreementTotal',l.agreementTotal,'number','min="0" max="100000000" step="0.01"');
  }
  if(type==='payment'){title='Record a bank repayment';body=field('Payment date','date',today(),'date','required')+field('Amount (RM)','amount',state.loan.monthly,'number','required min="0.01" max="100000000" step="0.01"')+'<label>Bank reference / note<textarea name="note" maxlength="1000"></textarea></label><p class="footnote">Add actual bank repayments only. Recording a payment does not make a bank transfer.</p>';}
  if(type==='upload'){title='Add a document';body='<label>PDF file<input name="file" type="file" accept=".pdf,application/pdf" required></label><label>Category<select name="category"><option>Service</option><option>Purchase</option><option>Loan</option><option>Other</option></select></label><p class="footnote">Uploaded PDFs are publicly accessible. PDF only, up to 20 MB. Duplicate PDFs will reuse the existing file.</p>';}
@@ -305,7 +333,7 @@ $('#editorForm').addEventListener('submit',async e=>{
   }
   if(editing==='vehicle')next.vehicle={name:value('name'),model:value('model'),plate:value('plate'),vin:value('vin'),colour:value('colour'),odometer:n('odometer'),odometerDate:value('odometerDate')};
   if(editing==='schedule')next.nextService={date:value('date')||null,mileage:n('mileage'),note:value('note'),documents:value('document')?[value('document')]:[]};
-  if(editing==='loan')next.loan={...next.loan,lender:value('lender'),monthly:n('monthly'),months:n('months'),finalInstalment:n('finalInstalment'),rate:n('rate'),rateType:value('rateType')||null,referenceRate:n('referenceRate'),margin:n('margin'),termCharges:n('termCharges'),agreementTotal:n('agreementTotal'),firstDate:value('firstDate')||null,nextDate:value('nextDate')||null,notes:value('notes')};
+  if(editing==='loan')next.loan={...next.loan,lender:value('lender'),monthly:n('monthly'),months:n('months'),finalInstalment:n('finalInstalment'),rate:n('rate'),rateType:value('rateType')||null,referenceRate:n('referenceRate'),margin:n('margin'),termCharges:n('termCharges'),agreementTotal:n('agreementTotal')};
   if(editing==='payment')next.payments.push({id:crypto.randomUUID(),date:value('date'),amount:n('amount'),note:value('note')});
   if(editing==='service'){
    next.services.push({id:crypto.randomUUID(),title:value('title'),date:value('date'),mileage:n('mileage'),cost:n('cost'),notes:value('notes'),parts:[],documents:value('document')?[value('document')]:[]});
@@ -322,7 +350,7 @@ document.addEventListener('click',async e=>{
  const service=e.target.closest('[data-service]');if(service){openService(service.dataset.service);return;}
  const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
- const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails','tipDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}if(go.hasAttribute('data-current-fuel'))fuelMonth=today().slice(0,7);view=go.dataset.view;render();window.scrollTo({top:0});}
+ const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','loanPaymentsDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails','tipDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}if(go.hasAttribute('data-current-fuel'))fuelMonth=today().slice(0,7);view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
  try{
@@ -334,11 +362,14 @@ document.addEventListener('click',async e=>{
   if(action==='close-next-service')$('#nextServiceDetails').close();
   if(action==='loan-snapshot')openLoanSnapshot();
   if(action==='close-loan-snapshot')$('#loanSnapshotDetails').close();
+  if(action==='loan-payments')openLoanPayments();
+  if(action==='close-loan-payments')$('#loanPaymentsDetails').close();
   if(action==='car-profile')openCarProfile();
   if(action==='close-car-profile')$('#carProfileDetails').close();
   if(action==='maintenance-recorded')openMaintenanceRecorded();
   if(action==='close-maintenance-recorded')$('#maintenanceRecordedDetails').close();
   if(action==='original-loan')openOriginalLoan();
+  if(action==='purchase-details')openOriginalLoan('Purchase breakdown');
   if(action==='close-original-loan')$('#originalLoanDetails').close();
   if(action==='refresh'){await load();notify('Latest records loaded');}
   if(action==='export'){
@@ -358,6 +389,8 @@ $('#editor').addEventListener('close',()=>{
  if($('#nextServiceDetails').open){renderNextServiceDetails();$('#nextServiceDetails [data-edit="schedule"]').focus({preventScroll:true});}
  if($('#carProfileDetails').open){renderCarProfileDetails();$('#carProfileDetails [data-edit="vehicle"]').focus({preventScroll:true});}
  if($('#maintenanceRecordedDetails').open){renderMaintenanceRecordedDetails();$('#maintenanceRecordedDetails [data-edit="service"]').focus({preventScroll:true});}
+ if($('#loanSnapshotDetails').open){renderLoanSnapshotDetails();$('#loanSnapshotDetails [data-edit="loan"]').focus({preventScroll:true});}
+ if($('#loanPaymentsDetails').open){renderLoanPaymentsDetails();$('#loanPaymentsDetails [data-edit="payment"]').focus({preventScroll:true});}
 });
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredInstall=e;$('#install').hidden=false;});
 window.addEventListener('offline',()=>notify('You are offline. Reconnect before saving or opening documents.'));
