@@ -7,6 +7,9 @@ import {onRequest as guard} from '../functions/api/_middleware.js';
 import {onRequestPut as save,onRequestGet as getState} from '../functions/api/state.js';
 import {onRequestPost as upload,onRequestGet as listDocs} from '../functions/api/documents/index.js';
 import {onRequestGet as download} from '../functions/api/documents/[id].js';
+import {onRequestGet as listTips} from '../functions/api/tips/index.js';
+import {onRequestGet as getTipImage} from '../functions/api/tips/[id]/image.js';
+import {validTips,TIPS_STATE_ID,tipImageKey} from '../functions/lib/tips.js';
 function fixture(){return {version:2,vehicle:{name:'Test car',model:'Hybrid',plate:'TEST',vin:'TEST',colour:'Red',odometer:1077,odometerDate:'2026-09-21'},nextService:{date:'2027-03-09',mileage:10000,note:'From workshop',documents:[]},services:[{id:'svc',title:'First service',date:'2026-09-21',mileage:1077,cost:268,notes:'Paid once',documents:[],parts:[]}],purchase:{onRoad:100,insurance:1,booking:1,customerDue:10,depositPaid:10.6,dealerReceipt:90,principal:90,roadTax:1,rebate:1,documents:[],notes:[]},loan:{lender:'',monthly:null,months:null,firstDate:null,nextDate:null,rate:null,notes:''},payments:[]};}
 function environment(){
  const db=new DatabaseSync(':memory:');db.exec(readFileSync(new URL('../schema.sql',import.meta.url),'utf8'));db.exec(readFileSync(new URL('../migrations/0002_garage.sql',import.meta.url),'utf8'));
@@ -88,6 +91,39 @@ test('public PDF upload validates signature, deduplicates bytes and supports dow
  assert.equal((await (await guard({request:new Request('https://garage.test/api/documents'),env,next:()=>listDocs({env})})).json()).documents.length,1);
  const file=await guard({request:new Request('https://garage.test/api/documents/'+id),env,next:()=>download({params:{id},env})});assert.equal(await file.text(),bytes);assert.equal(file.headers.get('Cache-Control'),'no-store');
  assert.equal((await download({params:{id:'missing'},env})).status,404);
+});
+
+function tipFixture(){return {version:1,tips:[{id:'camera-reference',title:'Camera settings',category:'Camera',summary:'Owner reference photo',createdAt:'2026-11-05',notes:['Use the pictured control.'],image:{sha256:'a'.repeat(64),contentType:'image/png',size:8,width:10,height:20}}]};}
+test('curated tips and original images are read independently of the garage records',async()=>{
+ const env=environment(),garage=fixture();
+ env.db.prepare('INSERT INTO app_state VALUES (?,?,?)').run('garage-v2',JSON.stringify(garage),1);
+ assert.deepEqual(await (await listTips({env})).json(),{tips:[]});
+ const data=tipFixture(),tip=data.tips[0],bytes=new Uint8Array([137,80,78,71,13,10,26,10]);
+ assert.ok(validTips(data));
+ env.db.prepare('INSERT INTO app_state VALUES (?,?,?)').run(TIPS_STATE_ID,JSON.stringify(data),2);
+ await env.DOCUMENTS.put(tipImageKey(tip),bytes);
+ const ctx={request:request('tips'),env};
+ const listed=await guard({...ctx,next:()=>listTips(ctx)});
+ assert.equal(listed.status,200);assert.deepEqual((await listed.json()).tips,data.tips);
+ const image=await guard({...ctx,params:{id:tip.id},next:()=>getTipImage({env,params:{id:tip.id}})});
+ assert.equal(image.status,200);assert.equal(image.headers.get('Content-Type'),'image/png');assert.equal(image.headers.get('Cache-Control'),'no-store');assert.equal(image.headers.get('X-Content-Type-Options'),'nosniff');
+ assert.deepEqual(new Uint8Array(await image.arrayBuffer()),bytes);
+ assert.equal((await getTipImage({env,params:{id:'unknown'}})).status,404);
+ assert.equal((await getTipImage({env,params:{id:'../private'}})).status,404);
+ assert.deepEqual((await (await getState({env})).json()).state,garage);
+});
+test('invalid tip metadata cannot serve active content or arbitrary R2 paths',async()=>{
+ for(const [key,value] of [['sha256','../private'],['contentType','image/svg+xml'],['size',-1],['width',0]]){
+  const data=tipFixture();data.tips[0].image[key]=value;assert.equal(validTips(data),false,key);
+ }
+ const duplicate=tipFixture();duplicate.tips.push(structuredClone(duplicate.tips[0]));assert.equal(validTips(duplicate),false);
+ const env=environment(),bad=tipFixture();bad.tips[0].image.contentType='text/html';
+ env.db.prepare('INSERT INTO app_state VALUES (?,?,?)').run(TIPS_STATE_ID,JSON.stringify(bad),1);
+ const ctx={request:request('tips'),env};
+ assert.equal((await guard({...ctx,next:()=>listTips(ctx)})).status,503);
+ env.db.prepare('UPDATE app_state SET data=? WHERE id=?').run(JSON.stringify(tipFixture()),TIPS_STATE_ID);
+ assert.equal((await getTipImage({env,params:{id:'camera-reference'}})).status,404);
+ assert.equal((await getTipImage({env:{DB:env.DB},params:{id:'camera-reference'}})).status,503);
 });
 
 test('fuel saves round-trip, legacy clients retain fuel, and stale or invalid edits fail',async()=>{
