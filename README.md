@@ -6,8 +6,8 @@ Production: https://pika-car-maint.pages.dev
 
 ## Features
 
-- Fuel tab with editable fill-ups, monthly spending, transaction counts and averages. Receipt litres, odometer and full-tank status are optional; unknown readings stay unknown.
-- Fuel economy (km/L and L/100 km) uses complete full-to-full intervals, including intervening partial fills. Missing litres or backwards mileage break the measurement chain. Monthly economy uses intervals ending in that month, which can span a month boundary.
+- Compact Fuel dashboard with a month selector, spending total, fill-up count and average payment in one summary. A monthly-breakdown popup compares spending and opens a selected month; compact history rows open the full fill-up record and an edit option. Desktop places history beside the summary; mobile stacks it below.
+- Receipt litres, odometer and full-tank status remain optional and saved with each fill-up. Only supplied readings appear in the record popup; unknown readings stay unknown. The dashboard focuses on spending and history, without a fuel-economy panel.
 - Overview dashboard with an illustrated vehicle card, documented mileage, a prominent date/mileage service reminder, monthly fuel spending, recent maintenance and purchase financing. Quick actions open service, fill-up, mileage and document forms. The current-month fuel shortcut also works before the first fill-up is logged.
 - Maintenance recorded opens the total, visit count and individual service costs in a popup. Open any service for its full record/PDFs, or go to Maintenance and log a new visit.
 - Compact Maintenance dashboard with the next-service date/mileage and countdown, one spend/visit summary, a mileage update shortcut and divided service-history rows. Desktop places the history beside the summary; mobile keeps it below. Totals and schedules open their full details in popups.

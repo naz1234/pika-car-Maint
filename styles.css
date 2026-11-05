@@ -282,18 +282,58 @@ html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 @media(max-width:760px){.loan-dashboard{grid-template-columns:minmax(0,1fr);gap:15px}.loan-heading{gap:8px 12px}.loan-heading h1{font-size:28px;letter-spacing:-1px}.loan-heading .eyebrow{font-size:8px}.loan-instalment{padding:17px 18px;gap:6px}.loan-monthly{font-size:30px}.loan-history{padding:16px 18px}.loan-history h2{font-size:20px}.loan-history .section-title{margin-bottom:0}.loan-empty{padding:16px 0}.loan-totals strong{font-size:18px}.loan-plan{gap:12px}}
 @media(max-width:360px){.loan-heading h1{font-size:25px}.loan-heading>.secondary{padding:10px}.loan-instalment{padding:15px}.loan-lender{font-size:10px;gap:6px}.loan-monthly{font-size:28px}.loan-totals>button{padding:0 13px}.loan-totals strong{font-size:16px;letter-spacing:-.5px}.loan-purchase-link{padding:13px}.loan-history{padding:14px}.loan-history h2{font-size:18px}.loan-history .primary{font-size:10px;padding:10px}.loan-payment-row{gap:8px}.loan-payment-row>strong{font-size:12px}}
 
-.fuel-filter{display:flex;align-items:end;gap:20px;margin:22px 0}
-.fuel-filter label{width:min(300px,100%)}
-.fuel-filter p{margin:0 0 12px;font-size:12px}
+/* Fuel keeps spending and fill-up records together without a measurement panel. */
+.fuel-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:24px;align-items:start}
+.fuel-dashboard svg{width:18px;height:18px;flex:none}
+.fuel-heading{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 14px}
+.fuel-heading .eyebrow{font-size:9px;letter-spacing:1.6px;margin-bottom:7px}
+.fuel-heading h1{font-size:34px;margin:0;letter-spacing:-1.2px}
+.fuel-heading>.primary{padding:12px 15px;font-size:12px}
+.fuel-heading>p{width:100%;font-size:12px;margin:0}
+.fuel-summary{min-width:0;border:1px solid var(--line);border-radius:15px;background:var(--surface);box-shadow:var(--shadow)}
+.fuel-summary-main{padding:17px 20px 19px;background:var(--finance-bg);border-radius:15px 15px 0 0}
+.fuel-summary-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.fuel-summary-top>span{font-size:11px;color:var(--muted)}
+.fuel-period{position:relative;min-width:0}
+.fuel-period>span{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.fuel-period select{width:175px;max-width:100%;font-size:16px;min-height:44px;padding:8px 10px;background:var(--surface);border-color:var(--line);font-weight:500}
+.fuel-spend{display:block;font-size:34px;line-height:1.25;letter-spacing:-1.2px;font-weight:650;margin:8px 0 17px;overflow-wrap:anywhere}
+.fuel-summary-stats{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1fr);margin:0;gap:16px}
+.fuel-summary-stats>div+div{border-left:1px solid var(--line);padding-left:18px}
+.fuel-summary-stats dt{font-size:10px;line-height:1.5;color:var(--muted);margin-bottom:5px}
+.fuel-summary-stats dd{font-size:20px;line-height:1.3;font-weight:650;letter-spacing:-.5px;margin:0;overflow-wrap:anywhere}
+.fuel-breakdown{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:52px;padding:13px 20px;border-top:1px solid var(--line);border-radius:0 0 15px 15px;background:transparent;color:var(--ink);text-align:left}
+.fuel-breakdown>span:first-child{display:flex;align-items:center;gap:10px;font-size:11px;font-weight:600}
+.fuel-breakdown svg{color:var(--accent)}
+.fuel-breakdown>span:last-child{font-size:21px;color:var(--accent)}
+.fuel-breakdown:focus-visible{outline-offset:-4px}
+.fuel-history{min-width:0}
+.fuel-history .section-title{margin-bottom:12px}
+.fuel-history h2{font-size:21px;margin:0}
+.fuel-history .section-title>span{font-size:10px;color:var(--muted)}
+.fuel-history .service-list{overflow:visible}
+.fuel-history .service-row{min-height:75px;background:transparent}
+.fuel-history .service-row:focus-visible{outline-offset:-4px;border-radius:10px}
 .fuel-check{flex-direction:row;align-items:center;gap:12px}
 .fuel-check input{width:22px;min-height:22px;height:22px;accent-color:var(--accent)}
-.fuel-months{display:grid;gap:10px;margin-top:20px}
-.fuel-month{width:100%;text-align:left;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--surface);color:var(--ink)}
-.fuel-month[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
-.fuel-month>span{display:flex;justify-content:space-between;gap:12px;font-size:13px}
-.fuel-month>small{display:block;color:var(--muted);margin:8px 0;font-size:11px}
-.fuel-month meter{display:block;width:100%;height:10px;accent-color:var(--accent)}
-@media(max-width:600px){.fuel-filter{display:block}.fuel-filter p{margin:12px 0 0}.fuel-month>span{font-size:12px}}
+.fuel-months{border-top:1px solid var(--line)}
+.fuel-month{display:grid;grid-template-columns:minmax(0,1fr) auto 9px;align-items:center;gap:8px 12px;width:100%;padding:15px 2px;border-bottom:1px solid var(--line);text-align:left;background:transparent;color:var(--ink)}
+.fuel-month[aria-pressed="true"]{color:var(--accent)}
+.fuel-month>span:first-child{display:grid;gap:5px;min-width:0}
+.fuel-month strong{font-size:13px;font-weight:650;line-height:1.4}
+.fuel-month>strong{white-space:nowrap}
+.fuel-month small{font-size:10px;color:var(--muted)}
+.fuel-month meter{display:block;grid-column:1/3;appearance:none;width:100%;height:4px;border:0;border-radius:99px;overflow:hidden;accent-color:var(--accent);background:var(--line)}
+.fuel-month meter::-webkit-meter-bar{background:var(--line);border:0;box-shadow:none}
+.fuel-month meter::-webkit-meter-optimum-value{background:var(--accent)}
+.fuel-month meter::-moz-meter-bar{background:var(--accent)}
+#fuelDetails,#fuelSpendingDetails{width:min(620px,calc(100% - 24px));max-height:84svh;padding:0;overflow:hidden}
+#fuelDetails[open],#fuelSpendingDetails[open]{display:flex;flex-direction:column}
+#fuelDetailsTitle{overflow-wrap:anywhere}
+#fuelSpendingBody>.footnote{margin:0 0 16px}
+@media(hover:hover) and (pointer:fine){.fuel-breakdown:hover,.fuel-month:hover,.fuel-history .service-row:hover :is(strong,.service-row-arrow){color:var(--accent)}}
+@media(max-width:760px){.fuel-dashboard{grid-template-columns:minmax(0,1fr);gap:15px}.fuel-heading{gap:8px 12px}.fuel-heading h1{font-size:28px;letter-spacing:-1px}.fuel-heading .eyebrow{font-size:8px}.fuel-heading>.primary{font-size:11px;padding:12px 13px}.fuel-summary-main{padding:14px 18px 17px}.fuel-spend{font-size:30px;margin:6px 0 14px}.fuel-breakdown{padding:12px 18px;min-height:48px}.fuel-history{margin-top:3px}.fuel-history h2{font-size:20px}}
+@media(max-width:360px){.fuel-heading h1{font-size:25px}.fuel-summary-main{padding:13px 15px 16px}.fuel-period select{width:165px;padding:8px}.fuel-spend{font-size:28px}.fuel-summary-stats dd{font-size:18px}.fuel-breakdown{padding:12px 15px}.fuel-history .service-row{padding:13px 12px}.fuel-month{gap:8px}.fuel-month strong{font-size:12px}}
 .options-section{max-width:800px}
 .options-section>p:not(.eyebrow){margin-bottom:22px}
 .theme-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
