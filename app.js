@@ -43,6 +43,7 @@ async function save(next){
 }
 const sourceLinks=ids=>ids.map(id=>{const d=documents.find(x=>x.id===id);return d?'<button class="source" type="button" data-document="'+id+'">▤ '+esc(d.filename)+'</button>':'';}).join('');
 const heading=(eyebrow,title,copy,action='')=>'<div class="page-head"><div><p class="eyebrow">'+eyebrow+'</p><h1>'+title+'</h1><p>'+copy+'</p></div>'+action+'</div>';
+const dashboardPicture=kind=>'<figure class="dashboard-scene scene-'+kind+'"><img src="/assets/dashboard-'+kind+'.webp" alt="'+({maintenance:'Red SUV in a service bay — illustration',fuel:'Red SUV beside a petrol pump — illustration',loan:'Car keys and purchase papers with a red SUV — illustration',tips:'Owner handbook and camera display beside a red SUV — illustration'}[kind])+'" width="1536" height="1024" loading="lazy" decoding="async"></figure>';
 const empty=(title,copy)=>'<div class="empty"><strong>'+title+'</strong><p>'+copy+'</p></div>';
 const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+({
  service:'<path d="m14 6 4-4a6 6 0 0 1-7 8L5 16a2.1 2.1 0 0 0 3 3l6-6a6 6 0 0 0 8-7l-4 4z"/>',
@@ -145,7 +146,7 @@ function renderLoan(loan){
  const term=l.months==null?'Term not provided':number(l.months)+' months';
  const rateType=l.rateType==='variable'?'Variable rate':l.rateType==='fixed'?'Fixed rate':'';
  return `<div class="loan-dashboard">
-  <header class="loan-heading"><div><p class="eyebrow">THE FINANCIAL PICTURE</p><h1>Loan & purchase</h1></div><button class="secondary" data-edit="loan" aria-label="Edit loan details">${icon('options')} Edit</button><p>Your payment plan and purchase records.</p></header>
+  <header class="loan-heading pictured-heading"><div><p class="eyebrow">THE FINANCIAL PICTURE</p><h1>Loan & purchase</h1></div><button class="secondary" data-edit="loan" aria-label="Edit loan details">${icon('options')} Edit</button><p>Your payment plan and purchase records.</p>${dashboardPicture('loan')}</header>
   <div class="loan-plan">
    <button class="loan-instalment" type="button" data-action="loan-snapshot" aria-haspopup="dialog"><span class="loan-lender"><span>${esc(l.lender||'Lender not provided')}</span><span class="pill">${term}</span></span><span class="loan-monthly-label">Monthly instalment</span><strong class="loan-monthly">${money(l.monthly)}${l.monthly==null?'':'<small>/ month</small>'}</strong><span class="loan-plan-bottom"><small>${l.finalInstalment==null?esc(rateType||'From your lender’s terms'):'Final instalment '+money(l.finalInstalment)}</small><span>Loan details ${icon('arrow')}</span></span></button>
    <section class="loan-summary" aria-label="Financing summary">
@@ -161,7 +162,7 @@ function serviceRow(s){
  return '<button class="service-row" type="button" data-service="'+esc(s.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(s.date)+' · '+number(s.mileage)+' km</span><strong>'+esc(s.title)+'</strong></span><strong class="service-row-cost">'+money(s.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
 }
 function renderTips(){
- const intro=heading('GET TO KNOW YOUR CAR','Car tips','Your saved notes and reference photos.');
+ const intro='<header class="tips-heading pictured-heading"><div><p class="eyebrow">GET TO KNOW YOUR CAR</p><h1>Car tips</h1></div><p>Your saved notes and reference photos.</p>'+dashboardPicture('tips')+'</header>';
  if(tipsUnavailable)return intro+empty('Tips are unavailable','Use Refresh to try again when you’re connected.');
  return intro+(tips.length?'<div class="tip-list">'+tips.map(t=>'<button class="tip-row" type="button" data-tip="'+esc(t.id)+'" aria-haspopup="dialog"><img class="tip-thumbnail" src="'+tipPhotoUrl(t)+'" alt="" width="60" height="76" loading="lazy"><span><small>'+esc(t.category)+'</small><strong>'+esc(t.title)+'</strong><span>'+esc(t.summary)+'</span></span><span class="service-row-arrow" aria-hidden="true">›</span></button>').join('')+'</div>':empty('No tips saved yet','Your car reference photos and notes will appear here.'));
 }
@@ -174,7 +175,7 @@ function openTip(id){
 function renderMaintenance(total,sorted){
  const v=state.vehicle;
  return `<div class="maintenance-dashboard">
-  <header class="maintenance-heading"><div><p class="eyebrow">THE CARE JOURNAL</p><h1>Maintenance</h1></div><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log service</button><p>Your service history and next visit.</p></header>
+  <header class="maintenance-heading pictured-heading"><div><p class="eyebrow">THE CARE JOURNAL</p><h1>Maintenance</h1></div><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log service</button><p>Your service history and next visit.</p>${dashboardPicture('maintenance')}</header>
   ${nextServiceRow()}
   <section class="maintenance-summary" aria-label="Maintenance summary">
    <button class="maintenance-totals" type="button" data-action="maintenance-recorded" aria-haspopup="dialog"><span><span>Total recorded</span><strong>${money(total)}</strong></span><span><span>Service visits</span><strong>${number(state.services.length)}</strong></span><span class="maintenance-summary-arrow" aria-hidden="true">›</span></button>
@@ -184,38 +185,32 @@ function renderMaintenance(total,sorted){
  </div>`;
 }
 function renderOverview(total,sorted,loan){
- const v=state.vehicle,schedule=state.nextService,status=serviceStatus(state,today());
- const month=today().slice(0,7),fuel=fuelSummary(state.fuelEntries||[],month);
- const distance=status.km==null?'Add a mileage target':status.km<0?number(-status.km)+' km past the mileage target':status.km===0?'Mileage target reached':number(status.km)+' km to the mileage target';
- const days=status.days==null?'Date not set':status.days<0?number(-status.days)+' days overdue':status.days===0?'Due today':number(status.days)+' days away';
- const stat=(symbol,label,value,copy,attributes)=>'<button class="overview-stat" type="button" '+attributes+'><span class="overview-stat-top"><span class="overview-icon">'+icon(symbol)+'</span><span>'+label+'</span>'+icon('arrow')+'</span><strong>'+value+'</strong><small>'+copy+'</small></button>';
+ const v=state.vehicle,month=today().slice(0,7),fuel=fuelSummary(state.fuelEntries||[],month);
+ const tile=(kind,label,value,copy,attributes)=>'<button class="overview-tile" type="button" '+attributes+'><img src="/assets/dashboard-'+kind+'.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"><span class="overview-tile-copy"><span>'+label+icon('arrow')+'</span><strong>'+value+'</strong><small>'+copy+'</small></span></button>';
  return `<div class="overview">
-  <div class="page-head overview-heading"><div><p class="eyebrow">A LITTLE CARE. MANY MORE MILES.</p><h1>Your car, at a glance.</h1><p>Everything you need for the road ahead.</p></div><div class="overview-heading-actions"><button class="secondary" type="button" data-view="car">${icon('car')} My car</button><button class="secondary" type="button" data-view="options">${icon('options')} Options</button><button class="primary" data-edit="service"><span aria-hidden="true">＋</span> Log a service</button></div></div>
+  <header class="overview-heading"><div><p class="eyebrow">PIKA · MY GARAGE</p><h1>Your garage</h1></div><div class="overview-heading-actions"><button class="secondary" type="button" data-view="car" aria-label="My car">${icon('car')}<span>My car</span></button><button class="secondary" type="button" data-view="options">${icon('options')} Options</button></div><p>Your car, your records, one place.</p></header>
   <div class="overview-top">
-   <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
-    <div class="vehicle-card-top"><span class="eyebrow">IN YOUR GARAGE</span><span class="registration">${esc(v.plate||'Registration not provided')}</span></div>
-    <h2 id="overviewVehicleTitle">${esc(v.name)}</h2><p class="vehicle-model">${esc(v.model)}</p>
-    <img class="overview-car-art" src="/assets/garage-car-red-mica.svg" alt="Red Mica Metallic car illustration" width="600" height="230">
-    <div class="vehicle-card-bottom"><div><span>Recorded mileage</span><strong>${number(v.odometer)} <small>km</small></strong><small>As at ${date(v.odometerDate)}</small></div><button data-action="car-profile" class="vehicle-details" aria-haspopup="dialog">Car details ${icon('arrow')}</button></div>
-   </section>
-   <section class="overview-schedule" aria-labelledby="overviewScheduleTitle">
-    <div class="schedule-top"><span class="overview-icon">${icon('calendar')}</span><span class="pill ${status.tone}">${status.label}</span></div>
-    <p class="eyebrow">NEXT UP</p><h2 id="overviewScheduleTitle">A little care goes a long way.</h2>
-    <div class="schedule-targets"><div><span>By date</span><strong>${schedule.date?date(schedule.date):'Not set'}</strong><small>${days}</small></div><span class="schedule-or">or</span><div><span>By odometer</span><strong>${schedule.mileage==null?'Not set':number(schedule.mileage)+' <small>km</small>'}</strong><small>Whichever comes first</small></div></div>
-    <div class="schedule-distance">${icon('car')}<span>${distance}<small>Based on your last recorded mileage</small></span></div>
-    <button class="overview-card-link" data-action="next-service" aria-haspopup="dialog">View service schedule ${icon('arrow')}</button>
+   <div class="overview-vehicle">
+    <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
+     <button class="vehicle-photo" type="button" data-action="car-profile" aria-label="Open car profile" aria-haspopup="dialog"><img src="/assets/dashboard-overview.webp" alt="Red Mica crossover in a garage setting — illustration" width="1536" height="1024" fetchpriority="high" decoding="async"><span class="registration" aria-hidden="true">${esc(v.plate||'Your car')}</span></button>
+     <div class="vehicle-caption"><div><h2 id="overviewVehicleTitle">${esc(v.name)}</h2><p>${esc(v.model)}</p></div><button class="vehicle-details" type="button" data-action="car-profile" aria-label="Car details" aria-haspopup="dialog">Details ${icon('arrow')}</button></div>
+     <div class="vehicle-card-bottom"><div><span>Recorded mileage</span><small>As at ${date(v.odometerDate)}</small></div><strong>${number(v.odometer)} <small>km</small></strong></div>
+    </section>
+    ${nextServiceRow()}
+   </div>
+   <section class="overview-dashboard-links" aria-label="Your dashboards">
+    ${tile('maintenance','Maintenance',money(total),number(state.services.length)+' service '+(state.services.length===1?'visit':'visits'),'data-action="maintenance-recorded" aria-haspopup="dialog"')}
+    ${tile('fuel','Fuel this month',money(fuel.total),monthLabel(month)+' · '+number(fuel.count)+' '+(fuel.count===1?'fill-up':'fill-ups'),'data-view="fuel" data-current-fuel')}
+    ${tile('loan','Loan & purchase',money(state.loan.monthly),state.loan.monthly==null?'View your loan terms':'Monthly'+(state.loan.months==null?' instalment':' · '+number(state.loan.months)+' months'),'data-action="loan-snapshot" aria-haspopup="dialog"')}
+    ${tile('tips','Car tips',tipsUnavailable?'Saved tips':number(tips.length)+' '+(tips.length===1?'tip':'tips'),'Your notes & reference photos','data-view="tips"')}
    </section>
   </div>
-  <div class="overview-stats" aria-label="Garage summary">
-   ${stat('service','Maintenance recorded',money(total),state.services.length+' service '+(state.services.length===1?'visit':'visits')+' · all time','data-action="maintenance-recorded" aria-haspopup="dialog"')}
-   ${stat('fuel','Fuel this month',money(fuel.total),monthLabel(month)+' · '+fuel.count+' '+(fuel.count===1?'fill-up':'fill-ups'),'data-view="fuel" data-current-fuel')}
-   ${stat('document','Document library',documents.length+' <small>PDFs</small>','Original documents, all together','data-view="documents"')}
-  </div>
+  <div class="overview-actions" role="group" aria-label="Quick actions"><button class="primary" data-edit="service">${icon('service')} Log service</button><button class="secondary" data-edit="fuel">${icon('fuel')} Log fill-up</button><button class="secondary" data-edit="vehicle">${icon('car')} Update mileage</button></div>
   <div class="overview-bottom">
-   <section class="overview-activity" aria-labelledby="overviewActivityTitle"><div class="overview-section-head"><div><p class="eyebrow">THE CARE JOURNAL</p><h2 id="overviewActivityTitle">Recent maintenance</h2></div><button class="text-button" data-view="maintenance">View all ${icon('arrow')}</button></div>${sorted.length?'<div class="service-list">'+sorted.slice(0,2).map(serviceRow).join('')+'</div>':empty('Your story starts here','Log your first service to start your car’s care journal.')}<div class="overview-journal-note">${icon('service')}<span>A well-kept history for the miles ahead.</span></div></section>
-   <section class="overview-finance" aria-labelledby="overviewFinanceTitle"><div class="overview-section-head"><div><p class="eyebrow">THE FINANCIAL PICTURE</p><h2 id="overviewFinanceTitle">Purchase & loan</h2></div></div><button class="finance-principal" data-action="original-loan" aria-haspopup="dialog"><span>Original loan amount ${icon('arrow')}</span><strong>${money(state.purchase.principal)}</strong><small>From your purchase order</small></button><button class="finance-repayments" data-action="loan-snapshot" aria-haspopup="dialog"><span>Repayments logged<strong>${money(loan.paid)}</strong></span>${icon('arrow')}</button><button class="overview-card-link" data-view="loan">See loan & purchase ${icon('arrow')}</button></section>
+   <section class="overview-activity" aria-labelledby="overviewActivityTitle"><div class="overview-section-head"><h2 id="overviewActivityTitle">Recent maintenance</h2><button class="text-button" data-view="maintenance">View all ${icon('arrow')}</button></div>${sorted.length?'<div class="service-list">'+sorted.slice(0,2).map(serviceRow).join('')+'</div>':empty('No services recorded','Log a service to start your car’s history.')}</section>
+   <section class="overview-finance" aria-labelledby="overviewFinanceTitle"><div class="overview-section-head"><h2 id="overviewFinanceTitle">Purchase & loan</h2><button class="text-button" data-view="loan">View all ${icon('arrow')}</button></div><button class="finance-row" type="button" data-action="original-loan" aria-haspopup="dialog"><span>Original loan amount<small>From your purchase order</small></span><strong>${money(state.purchase.principal)}</strong><span aria-hidden="true">›</span></button><button class="finance-row" type="button" data-action="loan-snapshot" aria-haspopup="dialog"><span>Repayments logged</span><strong>${money(loan.paid)}</strong><span aria-hidden="true">›</span></button></section>
   </div>
-  <div class="overview-shortcuts" role="group" aria-label="Quick actions"><span>Keep things up to date</span><button data-edit="fuel">${icon('fuel')} Log a fill-up</button><button data-edit="vehicle">${icon('car')} Update mileage</button><button data-edit="upload">${icon('document')} Add a document</button></div>
+  <div class="overview-paperwork"><button type="button" data-view="documents">${icon('document')}<span><strong>Document library</strong><small>${number(documents.length)} original PDFs</small></span>${icon('arrow')}</button><button class="text-button" data-edit="upload">Add a PDF ＋</button></div>
  </div>`;
 }
 function openService(id){
@@ -307,7 +302,7 @@ function renderFuel(){
  if(!fuelMonth || (fuelMonth!=='all'&&!months.includes(fuelMonth)))fuelMonth=months[0]||'all';
  const summary=fuelSummary(entries,fuelMonth),selected=entries.filter(e=>fuelMonth==='all'||e.date.startsWith(fuelMonth+'-')).sort((a,b)=>b.date.localeCompare(a.date)||a.id.localeCompare(b.id));
  return `<div class="fuel-dashboard">
-  <header class="fuel-heading"><div><p class="eyebrow">EVERY FILL, IN VIEW</p><h1>Fuel</h1></div><button class="primary" data-edit="fuel">＋ Log fill-up</button><p>Your fuel spending and fill-up history.</p></header>
+  <header class="fuel-heading pictured-heading"><div><p class="eyebrow">EVERY FILL, IN VIEW</p><h1>Fuel</h1></div><button class="primary" data-edit="fuel">＋ Log fill-up</button><p>Your fuel spending and fill-up history.</p>${dashboardPicture('fuel')}</header>
   <section class="fuel-summary" aria-label="Fuel spending summary"><div class="fuel-summary-main"><div class="fuel-summary-top"><span>Fuel spent</span><label class="fuel-period"><span>Show month</span><select id="fuelMonth"><option value="all"${fuelMonth==='all'?' selected':''}>All months</option>${months.map(m=>'<option value="'+m+'"'+(fuelMonth===m?' selected':'')+'>'+monthLabel(m)+'</option>').join('')}</select></label></div><strong class="fuel-spend">${money(summary.total)}</strong><dl class="fuel-summary-stats"><div><dt>Fill-ups</dt><dd>${number(summary.count)}</dd></div><div><dt>Average per fill-up</dt><dd>${summary.average==null?'—':money(summary.average)}</dd></div></dl></div><button class="fuel-breakdown" type="button" data-action="fuel-spending" aria-haspopup="dialog"><span>${icon('calendar')} Monthly breakdown</span><span aria-hidden="true">›</span></button></section>
   <section class="fuel-history" aria-labelledby="fuelHistoryTitle"><div class="section-title"><h2 id="fuelHistoryTitle">Fill-up history</h2><span>Newest first</span></div>${selected.length?'<div class="service-list">'+selected.map(fuelRow).join('')+'</div>':empty(entries.length?'No fill-ups this month':'No fill-ups yet',entries.length?'Choose another month or log a fill-up.':'Log a fill-up to start your fuel history.')}</section>
  </div>`;
