@@ -1,8 +1,9 @@
 import {money,dateOK,validState,serviceStatus,loanTotals} from './model.js';
 import {fuelMonths,fuelSummary} from './fuel.js';
 import {openDocument} from './pdf-viewer.js';
+import {openTipPhoto,tipPhotoUrl} from './photo-viewer.js';
 import {startAutoUpdates} from './updates.js';
-// Keep mobile page zoom fixed. The PDF reader handles its own pinch zoom.
+// Keep mobile page zoom fixed. Document and photo readers handle their own pinch zoom.
 for(const type of ['gesturestart','gesturechange'])document.addEventListener(type,e=>{if(e.cancelable)e.preventDefault();},{passive:false});
 for(const type of ['touchstart','touchmove'])document.addEventListener(type,e=>{if(e.touches.length>1&&e.cancelable)e.preventDefault();},{passive:false});
 const $=s=>document.querySelector(s);
@@ -10,8 +11,8 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const number=n=>new Intl.NumberFormat('en-MY').format(n);
 const today=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kuala_Lumpur',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const date=s=>s?new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}).format(new Date(s)):'Not provided';
-let state,revision,documents=[],view='overview',editing,busy=false,deferredInstall,fuelMonth='',editingFuelId=null;
-const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel consumption',loan:'Loan & purchase',documents:'Overview / Options / Documents',car:'Overview / My car',options:'Overview / Options'};
+let state,revision,documents=[],tips=[],tipsUnavailable=false,view='overview',editing,busy=false,deferredInstall,fuelMonth='',editingFuelId=null;
+const navLabels={overview:'Overview',maintenance:'Maintenance',fuel:'Fuel consumption',loan:'Loan & purchase',documents:'Overview / Options / Documents',car:'Overview / My car',options:'Overview / Options',tips:'Overview / Options / Car tips'};
 function notify(text){$('#notice').textContent=text;$('#notice').hidden=false;clearTimeout(notify.timer);notify.timer=setTimeout(()=>$('#notice').hidden=true,6000);}
 async function api(path,options={}){
  let response;
@@ -25,10 +26,10 @@ function showLoadError(error){
  $('#syncStatus').textContent='Records unavailable';
 }
 async function load(){
- const [data,files]=await Promise.all([api('state'),api('documents')]);
+ const [data,files,savedTips]=await Promise.all([api('state'),api('documents'),api('tips').catch(()=>({tips:[],unavailable:true}))]);
  if(!data.state)throw new Error('Your garage is being prepared. Please try again shortly.');
  if(!validState(data.state))throw new Error('Garage data needs attention. Please contact the app owner.');
- state=data.state;revision=data.revision;documents=files.documents;
+ state=data.state;revision=data.revision;documents=files.documents;tips=savedTips.tips;tipsUnavailable=!!savedTips.unavailable;
  render();
 }
 async function save(next){
@@ -51,7 +52,8 @@ const icon=name=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
  calendar:'<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4M17 3v4M3 11h18m-13 5 3 3 5-5"/>',
  car:'<path d="m5 8 2-5h10l2 5 2 3v7H3v-7zM5 8h14M3 14h18M6 18v3m12-3v3M6 11h2m8 0h2"/>',
  arrow:'<path d="M5 12h14m-5-5 5 5-5 5"/>',
- options:'<path d="M4 7h3m6 0h7M4 17h7m6 0h3"/><circle cx="10" cy="7" r="3"/><circle cx="14" cy="17" r="3"/>'
+ options:'<path d="M4 7h3m6 0h7M4 17h7m6 0h3"/><circle cx="10" cy="7" r="3"/><circle cx="14" cy="17" r="3"/>',
+ tip:'<path d="M9 18h6m-5 3h4M8.4 14.6a6 6 0 1 1 7.2 0L15 18H9z"/>'
 }[name]||'')+'</svg>';
 function loanTermsRows(l){
  const rate=l.rate==null?'Not provided':number(l.rate)+'%'+(l.rateType?' · '+l.rateType:'');
@@ -126,6 +128,21 @@ function openLoanSnapshot(){
 function serviceRow(s){
  return '<button class="service-row" type="button" data-service="'+esc(s.id)+'" aria-haspopup="dialog"><span class="service-row-main"><span class="service-row-date">'+date(s.date)+' · '+number(s.mileage)+' km</span><strong>'+esc(s.title)+'</strong></span><strong class="service-row-cost">'+money(s.cost)+'</strong><span class="service-row-arrow" aria-hidden="true">›</span></button>';
 }
+function tipsOption(){
+ const description=tipsUnavailable?'Reference photos and notes':tips.length+' saved '+(tips.length===1?'tip':'tips')+' · reference photos and notes';
+ return '<section class="options-section tips-option"><button class="option-link" type="button" data-view="tips"><span class="option-icon">'+icon('tip')+'</span><span><strong>Car tips</strong><small>'+description+'</small></span><span aria-hidden="true">↗</span></button></section>';
+}
+function renderTips(){
+ const intro='<button class="text-button back-button" data-view="options" type="button">← Back to Options</button>'+heading('GET TO KNOW YOUR CAR','Car tips','Your saved notes and reference photos.');
+ if(tipsUnavailable)return intro+empty('Tips are unavailable','Use Refresh to try again when you’re connected.');
+ return intro+(tips.length?'<div class="tip-list">'+tips.map(t=>'<button class="tip-row" type="button" data-tip="'+esc(t.id)+'" aria-haspopup="dialog"><img class="tip-thumbnail" src="'+tipPhotoUrl(t)+'" alt="" width="60" height="76" loading="lazy"><span><small>'+esc(t.category)+'</small><strong>'+esc(t.title)+'</strong><span>'+esc(t.summary)+'</span></span><span class="service-row-arrow" aria-hidden="true">›</span></button>').join('')+'</div>':empty('No tips saved yet','Your car reference photos and notes will appear here.'));
+}
+function openTip(id){
+ const tip=tips.find(t=>t.id===id);if(!tip)return;
+ $('#tipTitle').textContent=tip.title;$('#tipCategory').textContent=tip.category;
+ $('#tipBody').innerHTML='<p>'+esc(tip.summary)+'</p><button class="tip-photo-preview" type="button" data-tip-photo="'+esc(tip.id)+'"><img src="'+tipPhotoUrl(tip)+'" alt="'+esc(tip.title)+' — reference photo" width="'+tip.image.width+'" height="'+tip.image.height+'"><span>Enlarge photo ↗</span></button><section><h3>Reference note</h3>'+tip.notes.map(note=>'<p>'+esc(note)+'</p>').join('')+'</section><p class="footnote">Owner-provided reference · Saved '+date(tip.createdAt)+'</p>';
+ $('#tipBody').scrollTop=0;$('#tipDetails').showModal();
+}
 function renderMaintenance(total,sorted){
  const v=state.vehicle;
  return `<div class="maintenance-dashboard">
@@ -170,7 +187,7 @@ function renderOverview(total,sorted,loan){
    <section class="overview-activity" aria-labelledby="overviewActivityTitle"><div class="overview-section-head"><div><p class="eyebrow">THE CARE JOURNAL</p><h2 id="overviewActivityTitle">Recent maintenance</h2></div><button class="text-button" data-view="maintenance">View all ${icon('arrow')}</button></div>${sorted.length?'<div class="service-list">'+sorted.slice(0,2).map(serviceRow).join('')+'</div>':empty('Your story starts here','Log your first service to start your car’s care journal.')}<div class="overview-journal-note">${icon('service')}<span>A well-kept history for the miles ahead.</span></div></section>
    <section class="overview-finance" aria-labelledby="overviewFinanceTitle"><div class="overview-section-head"><div><p class="eyebrow">THE FINANCIAL PICTURE</p><h2 id="overviewFinanceTitle">Purchase & loan</h2></div></div><button class="finance-principal" data-action="original-loan" aria-haspopup="dialog"><span>Original loan amount ${icon('arrow')}</span><strong>${money(state.purchase.principal)}</strong><small>From your purchase order</small></button><button class="finance-repayments" data-action="loan-snapshot" aria-haspopup="dialog"><span>Repayments logged<strong>${money(loan.paid)}</strong></span>${icon('arrow')}</button><button class="overview-card-link" data-view="loan">See loan & purchase ${icon('arrow')}</button></section>
   </div>
-  <div class="overview-shortcuts" role="group" aria-label="Quick actions"><span>Keep things up to date</span><button data-edit="fuel">${icon('fuel')} Log a fill-up</button><button data-edit="vehicle">${icon('car')} Update mileage</button><button data-edit="upload">${icon('document')} Add a document</button></div>
+  <div class="overview-shortcuts" role="group" aria-label="Quick actions"><span>Keep things up to date</span><button data-edit="fuel">${icon('fuel')} Log a fill-up</button><button data-edit="vehicle">${icon('car')} Update mileage</button><button data-edit="upload">${icon('document')} Add a document</button><button data-view="tips">${icon('tip')} Car tips</button></div>
  </div>`;
 }
 function openService(id){
@@ -186,12 +203,13 @@ function render(){
  if(!state)return;
  const total=state.services.reduce((sum,x)=>sum+x.cost,0),loan=loanTotals(state);
  const sorted=[...state.services].sort((a,b)=>b.date.localeCompare(a.date));
- const activeTab=['car','options','documents'].includes(view)?'overview':view;
+ const activeTab=['car','options','documents','tips'].includes(view)?'overview':view;
  document.querySelectorAll('.sidebar nav [data-view]').forEach(b=>{b.classList.toggle('active',b.dataset.view===activeTab);b.setAttribute('aria-current',b.dataset.view===activeTab?'page':'false');});
  $('#breadcrumb').textContent='Your garage / '+navLabels[view];
  $('#syncStatus').textContent='Saved '+new Intl.DateTimeFormat('en-GB',{hour:'2-digit',minute:'2-digit'}).format(new Date(revision));
  let content='';
  if(view==='fuel')content=renderFuel();
+ if(view==='tips')content=renderTips();
  if(view==='overview'){
   content=renderOverview(total,sorted,loan);
  }
@@ -208,8 +226,8 @@ function render(){
   (state.payments.length?'<div class="card">'+[...state.payments].sort((a,b)=>b.date.localeCompare(a.date)).map(p=>'<div class="payment-row"><div><strong>'+date(p.date)+'</strong><p>'+esc(p.note)+'</p></div><strong>'+money(p.amount)+'</strong></div>').join('')+'</div>':empty('No bank repayments recorded','The dealer’s purchase receipt is separate from your monthly bank repayments.'));
  }
  if(view==='options'){
-  content='<button class="text-button back-button" data-view="overview" type="button">← Back to Overview</button>'+heading('MAKE IT YOURS','Options','Choose your appearance and find your documents.')+
-  '<section class="card options-section"><p class="eyebrow">APP UPDATES</p><h2>Always up to date.</h2><p>New versions load automatically. If you’re editing or reading a PDF, the update waits until you finish.</p></section>'+
+  content='<button class="text-button back-button" data-view="overview" type="button">← Back to Overview</button>'+heading('MAKE IT YOURS','Options','Choose your appearance, car tips and documents.')+tipsOption()+
+  '<section class="card options-section"><p class="eyebrow">APP UPDATES</p><h2>Always up to date.</h2><p>New versions load automatically. Updates wait while you’re editing or viewing a photo or PDF.</p></section>'+
   '<section class="card options-section spaced" aria-labelledby="appearanceTitle"><p class="eyebrow">APPEARANCE</p><h2 id="appearanceTitle">Light or dark, your choice.</h2><p>Choose a look for this device. Your choice is remembered.</p><div class="theme-options" role="group" aria-label="Colour mode">'+
   ['light','dark'].map(theme=>'<button class="theme-choice" type="button" data-theme-choice="'+theme+'" aria-pressed="'+(window.PikaTheme.get()===theme)+'"><span class="theme-swatch '+theme+'" aria-hidden="true"><span class="swatch-nav"></span><span class="swatch-card"></span><span class="swatch-card"></span></span><span class="theme-label">'+(theme==='light'?'☀ Light':'☾ Dark')+'<span class="theme-check" aria-hidden="true">✓</span></span></button>').join('')+
   '</div></section><section class="card options-section spaced" aria-labelledby="optionsDocumentsTitle"><p class="eyebrow">DOCUMENTS</p><h2 id="optionsDocumentsTitle">Your paperwork, close by.</h2><p>Open your receipts, invoices and purchase documents, or add a new PDF.</p><button class="option-link" type="button" data-view="documents"><span class="option-icon" aria-hidden="true">▤</span><span><strong>Document library</strong><small>'+documents.length+' unique PDFs · available to everyone</small></span><span aria-hidden="true">↗</span></button></section>';
@@ -223,7 +241,7 @@ function render(){
   const v=state.vehicle;
   content='<button class="text-button back-button" data-view="overview" type="button">← Back to Overview</button>'+heading('YOUR GARAGE','Car details','Keep the mileage current for useful service reminders.','<button class="primary" data-edit="vehicle">Edit car details ↗</button>')+
   '<section class="card"><p class="eyebrow">VEHICLE PROFILE</p><h2>'+esc(v.name)+'</h2><dl class="rows">'+[['Model',v.model],['Registration',v.plate],['Colour',v.colour],['VIN',v.vin],['Last recorded mileage',number(v.odometer)+' km'],['Mileage recorded on',date(v.odometerDate)]].map(([k,val])=>'<div><dt>'+k+'</dt><dd>'+esc(val)+'</dd></div>').join('')+'</dl></section>'+
-  '<section class="card spaced"><h2>Your data, together.</h2><p>This garage is public. Anyone with the link can view and update the records. Changes save across devices. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records and document metadata. Open original PDFs from Options → Document library.</p></section>';
+  '<section class="card spaced"><h2>Your data, together.</h2><p>This garage is public. Anyone with the link can view and update the records. Changes save across devices. Use Refresh to load the latest records.</p><button class="secondary" data-action="export">Export a JSON backup ↓</button><p class="footnote">The backup includes summaries, repayment records, tips and document metadata. Open original PDFs from Options → Document library and photos from Car tips.</p></section>';
  }
  $('#content').innerHTML=content;if(view==='documents')renderDocuments();
 }
@@ -302,18 +320,21 @@ $('#editorForm').addEventListener('submit',async e=>{
  }catch(error){const box=$('#formError');if(box)box.textContent=error.message;else notify(error.message);}finally{e.target.querySelector('button[type=submit]')?.removeAttribute('disabled');}
 });
 document.addEventListener('click',async e=>{
+ const tipPhoto=e.target.closest('[data-tip-photo]');if(tipPhoto){const tip=tips.find(t=>t.id===tipPhoto.dataset.tipPhoto);if(tip)openTipPhoto(tip);return;}
+ const tip=e.target.closest('[data-tip]');if(tip){openTip(tip.dataset.tip);return;}
  const fuel=e.target.closest('[data-fuel-edit]');if(fuel){openEditor('fuel',fuel.dataset.fuelEdit);return;}
  const month=e.target.closest('[data-fuel-month]');if(month){fuelMonth=month.dataset.fuelMonth;render();return;}
  const service=e.target.closest('[data-service]');if(service){openService(service.dataset.service);return;}
  const pdf=e.target.closest('[data-document]');if(pdf){const file=documents.find(d=>d.id===pdf.dataset.document);if(file)openDocument(file);return;}
  const theme=e.target.closest('[data-theme-choice]');if(theme)window.PikaTheme.set(theme.dataset.themeChoice);
- const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}if(go.hasAttribute('data-current-fuel'))fuelMonth=today().slice(0,7);view=go.dataset.view;render();window.scrollTo({top:0});}
+ const go=e.target.closest('[data-view]');if(go){for(const id of ['loanSnapshotDetails','carProfileDetails','maintenanceRecordedDetails','originalLoanDetails','tipDetails']){const popup=document.getElementById(id);if(popup?.open)popup.close();}if(go.hasAttribute('data-current-fuel'))fuelMonth=today().slice(0,7);view=go.dataset.view;render();window.scrollTo({top:0});}
  const edit=e.target.closest('[data-edit]');if(edit)openEditor(edit.dataset.edit);
  const action=e.target.closest('[data-action]')?.dataset.action;
  try{
   if(action==='delete-fuel'&&!busy&&editingFuelId&&confirm('Delete this fill-up from your fuel log?')){const next=structuredClone(state);next.fuelEntries=next.fuelEntries.filter(e=>e.id!==editingFuelId);if(await save(next))$('#editor').close();}
   if(action==='close'&&!busy)$('#editor').close();
   if(action==='close-service')$('#serviceDetails').close();
+  if(action==='close-tip')$('#tipDetails').close();
   if(action==='next-service')openNextService();
   if(action==='close-next-service')$('#nextServiceDetails').close();
   if(action==='loan-snapshot')openLoanSnapshot();
@@ -326,7 +347,7 @@ document.addEventListener('click',async e=>{
   if(action==='close-original-loan')$('#originalLoanDetails').close();
   if(action==='refresh'){await load();notify('Latest records loaded');}
   if(action==='export'){
-   const blob=new Blob([JSON.stringify({state,documents,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+   const blob=new Blob([JSON.stringify({state,documents,tips:tipsUnavailable?null:tips,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pika-garage-'+today()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
   }
   if(action==='install'&&deferredInstall){await deferredInstall.prompt();deferredInstall=null;$('#install').hidden=true;}

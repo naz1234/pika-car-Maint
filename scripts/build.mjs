@@ -1,6 +1,6 @@
 import {mkdir,copyFile,cp,readFile,writeFile,readdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
-const browserFiles=['index.html','app.js','model.js','fuel.js','theme.js','pdf-viewer.js','updates.js','styles.css','sw.js','manifest.webmanifest','_headers'];
+const browserFiles=['index.html','app.js','model.js','fuel.js','theme.js','pdf-viewer.js','photo-viewer.js','updates.js','styles.css','sw.js','manifest.webmanifest','_headers'];
 const hash=createHash('sha256');
 for(const name of [...browserFiles,'package.json'])hash.update(name+'\0').update(await readFile(name));
 async function hashAssets(directory){

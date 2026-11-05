@@ -25,6 +25,7 @@ Production: https://pika-car-maint.pages.dev
 - In-app PDF reader with an always-visible Back button, page navigation and zoom. Closing it keeps your place in the garage, including document filters. PDFs stay on the app's origin; PDF.js is bundled locally.
 - Mobile app screens stay at normal scale. PDF pinch gestures zoom the document itself, so the toolbar and the garage stay at normal size when returning. Mobile form controls use 16px text to avoid focus zoom.
 - Red Mica light and dark modes, remembered on each device and applied before the first paint. Warm page backgrounds, separate panel surfaces, bordered popup windows and shaded headers keep screens and stacked dialogs distinct. Long forms scroll beneath their visible title and Close button.
+- Car tips in Options and the Overview shortcuts, with compact rows opening saved notes and original reference photos. A full-screen photo reader has Back, pinch zoom and zoom controls; Back returns to the tip. Photo failures offer Retry and keep Back available.
 - Installable app. Only the static shell is cached; records and PDFs are never cached by the service worker.
 - Automatic app updates check every minute while visible, and on returning to the app or reconnecting. Updates wait for open forms, uploads and PDF reading to finish, then restore the current tab, document filters and scroll position.
 - JSON export of state and document metadata.
@@ -40,6 +41,8 @@ The build generates a deterministic app version in the HTML, service-worker cach
 New installation: apply `schema.sql` and `migrations/0002_garage.sql`, bind D1/R2, import validated version-2 JSON into `app_state` under id `garage-v2` with a millisecond timestamp, then upload PDFs through the app.
 
 The original `app_state.shared` record remains unchanged as the legacy backup. Personal records and PDFs are not in this repository.
+
+Curated tips use a separate version-1 JSON record in `app_state` under `car-tips-v1`; no schema migration is needed. The record contains `tips` with unique slug IDs, title/category/summary/notes, an ISO `createdAt` date and image metadata (`sha256`, `contentType`, `size`, `width`, `height`). Supported photo types are PNG and JPEG, up to 10 MB. Originals live in the existing R2 bucket at `tips/<sha256>.png` or `.jpg`. `/api/tips` and `/api/tips/:id/image` are read-only; a missing tips record is an empty list. Tip availability does not block other garage screens. Photos and owner notes are imported into R2/D1, never included in the source repository or browser build.
 
 ## Security and saving
 
