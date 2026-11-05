@@ -77,7 +77,7 @@ html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 @media(max-width:600px){.car-illustration{min-width:280px;right:10px}}
 
 /* Options */
-/* Overview pairs the vehicle picture with four compact dashboard cards. */
+/* Overview pairs the vehicle picture with a compact list of dashboard summaries. */
 .overview{display:grid;gap:20px}
 .overview svg{width:18px;height:18px;flex:none}
 .overview-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px 14px}
@@ -107,17 +107,18 @@ html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 .vehicle-card-bottom>strong>small{font-size:11px;font-weight:400;color:var(--muted);letter-spacing:0}
 .vehicle-photo:focus-visible{outline-offset:-4px}
 .overview-vehicle .maintenance-next{grid-column:auto}
-.overview-dashboard-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;min-width:0}
-.overview-tile{overflow:hidden;min-width:0;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);text-align:left;box-shadow:var(--shadow)}
-.overview-tile>img{display:block;width:100%;height:102px;object-fit:cover;object-position:50% 55%;background:var(--accent-soft)}
-.overview-tile[data-action="loan-snapshot"]>img{object-position:50% 92%}
-.overview-tile[data-view="tips"]>img{object-position:50% 85%}
-.overview-tile-copy{display:grid;gap:7px;padding:13px 14px 15px}
-.overview-tile-copy>span{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:11px;font-weight:600;line-height:1.4}
-.overview-tile-copy svg{width:13px;height:13px;color:var(--accent)}
-.overview-tile-copy>strong{font-size:23px;font-weight:650;letter-spacing:-.8px;line-height:1.3;overflow-wrap:anywhere}
-.overview-tile-copy>small{font-size:9px;line-height:1.5;color:var(--muted)}
-.overview-tile:focus-visible{outline-offset:-4px}
+.overview-dashboard-links{min-width:0;border:1px solid var(--line);border-radius:16px;background:var(--surface);box-shadow:var(--shadow)}
+.overview-summary-row{display:grid;grid-template-columns:76px minmax(0,1fr) auto 9px;align-items:center;gap:14px;min-width:0;width:100%;min-height:100px;padding:16px;background:transparent;color:var(--ink);text-align:left}
+.overview-summary-row+.overview-summary-row{border-top:1px solid var(--line)}
+.overview-summary-row:first-child{border-radius:16px 16px 0 0}
+.overview-summary-row:last-child{border-radius:0 0 16px 16px}
+.overview-summary-row>img{display:block;width:76px;height:64px;object-fit:cover;border-radius:10px;background:var(--accent-soft)}
+.overview-summary-copy{display:grid;gap:6px;min-width:0}
+.overview-summary-copy>strong{font-size:13px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.overview-summary-copy>small{font-size:10px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.overview-summary-value{max-width:100%;font-size:19px;font-weight:650;letter-spacing:-.6px;line-height:1.3;white-space:nowrap}
+.overview-summary-arrow{font-size:22px;color:var(--accent)}
+.overview-summary-row:focus-visible{outline-offset:-4px}
 .overview-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .overview-actions button{font-size:11px;gap:8px;padding:12px 10px}
 .overview-actions svg{width:16px;height:16px}
@@ -149,10 +150,10 @@ html,body,#garage,#editor,#pdfViewer,#pdfPages{touch-action:pan-x pan-y}
 .overview-paperwork svg{color:var(--accent);width:17px;height:17px}
 .overview-paperwork>button:first-child>svg:last-child{margin-left:auto}
 .overview-paperwork>.text-button{font-size:10px;min-height:44px;margin-left:8px;padding-left:14px;border-left:1px solid var(--line);flex:none}
-@media(hover:hover) and (pointer:fine){.overview-tile:hover .overview-tile-copy>span,.overview-activity .service-row:hover :is(strong,.service-row-arrow),.finance-row:hover strong{color:var(--accent)}}
-@media(max-width:1100px){.overview-top{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.vehicle-photo img{height:204px}.vehicle-caption{padding:14px}.vehicle-caption h2{font-size:20px}.vehicle-card-bottom{padding:12px 14px}.overview-tile>img{height:94px}.overview-tile-copy{padding:12px}.overview-tile-copy>strong{font-size:20px}.overview-bottom{gap:16px}.overview-activity,.overview-finance{padding:15px 17px}.finance-row strong{font-size:15px}.overview-section-head h2{font-size:18px}}
-@media(max-width:760px){.overview{gap:15px}.overview-top,.overview-bottom{grid-template-columns:minmax(0,1fr);gap:15px}.overview-heading{gap:8px 10px}.overview-heading h1{font-size:28px;letter-spacing:-1px}.overview-heading .eyebrow{font-size:8px;letter-spacing:1.3px}.overview-heading-actions{gap:6px}.overview-heading-actions .secondary{font-size:10px;padding:10px;gap:5px}.overview-heading-actions svg{width:14px;height:14px}.vehicle-photo img{height:174px}.vehicle-caption{padding:12px 15px}.vehicle-caption h2{font-size:21px}.vehicle-card-bottom{padding:11px 15px}.vehicle-card-bottom>strong{font-size:22px}.overview-dashboard-links{gap:12px}.overview-tile>img{height:84px}.overview-tile-copy{gap:6px;padding:11px 12px 12px}.overview-tile-copy>strong{font-size:21px}.overview-actions{gap:8px}.overview-actions button{font-size:10px;padding:12px 7px;gap:5px}.overview-actions svg{width:14px;height:14px}.overview-activity,.overview-finance{padding:14px 17px}.overview-section-head h2{font-size:19px}.finance-row strong{font-size:17px}}
-@media(max-width:360px){.overview-heading h1{font-size:24px}.overview-heading-actions [data-view="car"]{min-width:44px}.overview-heading-actions [data-view="car"]>span{display:none}.overview-heading-actions .secondary{font-size:9px;padding:10px 8px}.vehicle-photo img{height:152px}.vehicle-caption h2{font-size:19px}.vehicle-caption p{font-size:10px}.overview-tile>img{height:74px}.overview-tile-copy{padding:10px}.overview-tile-copy>span{font-size:10px}.overview-tile-copy>strong{font-size:18px}.overview-tile-copy>small{font-size:8px}.overview-actions{gap:6px}.overview-actions button{font-size:9px;gap:4px;padding:11px 5px}.overview-actions svg{width:12px;height:12px}.finance-row strong{font-size:15px}.overview-paperwork{padding:0 13px}.overview-paperwork strong{font-size:11px}}
+@media(hover:hover) and (pointer:fine){.overview-summary-row:hover :is(.overview-summary-copy>strong,.overview-summary-value),.overview-activity .service-row:hover :is(strong,.service-row-arrow),.finance-row:hover strong{color:var(--accent)}}
+@media(max-width:1100px){.overview-top{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.vehicle-photo img{height:204px}.vehicle-caption{padding:14px}.vehicle-caption h2{font-size:20px}.vehicle-card-bottom{padding:12px 14px}.overview-summary-row{grid-template-columns:60px minmax(0,1fr) auto 8px;gap:11px;padding:14px}.overview-summary-row>img{width:60px;height:58px}.overview-summary-value{font-size:17px}.overview-bottom{gap:16px}.overview-activity,.overview-finance{padding:15px 17px}.finance-row strong{font-size:15px}.overview-section-head h2{font-size:18px}}
+@media(max-width:760px){.overview{gap:15px}.overview-top,.overview-bottom{grid-template-columns:minmax(0,1fr);gap:15px}.overview-heading{gap:8px 10px}.overview-heading h1{font-size:28px;letter-spacing:-1px}.overview-heading .eyebrow{font-size:8px;letter-spacing:1.3px}.overview-heading-actions{gap:6px}.overview-heading-actions .secondary{font-size:10px;padding:10px;gap:5px}.overview-heading-actions svg{width:14px;height:14px}.vehicle-photo img{height:174px}.vehicle-caption{padding:12px 15px}.vehicle-caption h2{font-size:21px}.vehicle-card-bottom{padding:11px 15px}.vehicle-card-bottom>strong{font-size:22px}.overview-summary-row{grid-template-columns:56px minmax(0,1fr) auto 8px;min-height:80px;gap:10px;padding:12px}.overview-summary-row>img{width:56px;height:52px;border-radius:8px}.overview-summary-copy>strong{font-size:12px}.overview-summary-copy>small{font-size:9px}.overview-summary-value{font-size:16px;letter-spacing:-.5px}.overview-actions{gap:8px}.overview-actions button{font-size:10px;padding:12px 7px;gap:5px}.overview-actions svg{width:14px;height:14px}.overview-activity,.overview-finance{padding:14px 17px}.overview-section-head h2{font-size:19px}.finance-row strong{font-size:17px}}
+@media(max-width:360px){.overview-heading h1{font-size:24px}.overview-heading-actions [data-view="car"]{min-width:44px}.overview-heading-actions [data-view="car"]>span{display:none}.overview-heading-actions .secondary{font-size:9px;padding:10px 8px}.vehicle-photo img{height:152px}.vehicle-caption h2{font-size:19px}.vehicle-caption p{font-size:10px}.overview-summary-row{grid-template-columns:44px minmax(0,1fr) auto 7px;min-height:76px;padding:11px;gap:8px}.overview-summary-row>img{width:44px;height:48px}.overview-summary-copy{gap:4px}.overview-summary-copy>strong{font-size:11px}.overview-summary-copy>small{font-size:9px}.overview-summary-value{font-size:14px;letter-spacing:-.4px}.overview-actions{gap:6px}.overview-actions button{font-size:9px;gap:4px;padding:11px 5px}.overview-actions svg{width:12px;height:12px}.finance-row strong{font-size:15px}.overview-paperwork{padding:0 13px}.overview-paperwork strong{font-size:11px}}
 
 /* Maintenance keeps the next visit and the journal within easy reach. */
 .maintenance-dashboard{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:20px;align-items:start}

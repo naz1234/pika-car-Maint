@@ -186,7 +186,7 @@ function renderMaintenance(total,sorted){
 }
 function renderOverview(total,sorted,loan){
  const v=state.vehicle,month=today().slice(0,7),fuel=fuelSummary(state.fuelEntries||[],month);
- const tile=(kind,label,value,copy,attributes)=>'<button class="overview-tile" type="button" '+attributes+'><img src="/assets/dashboard-'+kind+'.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"><span class="overview-tile-copy"><span>'+label+icon('arrow')+'</span><strong>'+value+'</strong><small>'+copy+'</small></span></button>';
+ const summaryRow=(kind,label,value,copy,attributes)=>'<button class="overview-summary-row" type="button" '+attributes+'><img src="/assets/dashboard-'+kind+'.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"><span class="overview-summary-copy"><strong>'+label+'</strong><small>'+copy+'</small></span><strong class="overview-summary-value">'+value+'</strong><span class="overview-summary-arrow" aria-hidden="true">›</span></button>';
  return `<div class="overview">
   <header class="overview-heading"><div><p class="eyebrow">PIKA · MY GARAGE</p><h1>Your garage</h1></div><div class="overview-heading-actions"><button class="secondary" type="button" data-view="car" aria-label="My car">${icon('car')}<span>My car</span></button><button class="secondary" type="button" data-view="options">${icon('options')} Options</button></div><p>Your car, your records, one place.</p></header>
   <div class="overview-top">
@@ -199,10 +199,10 @@ function renderOverview(total,sorted,loan){
     ${nextServiceRow()}
    </div>
    <section class="overview-dashboard-links" aria-label="Your dashboards">
-    ${tile('maintenance','Maintenance',money(total),number(state.services.length)+' service '+(state.services.length===1?'visit':'visits'),'data-action="maintenance-recorded" aria-haspopup="dialog"')}
-    ${tile('fuel','Fuel this month',money(fuel.total),monthLabel(month)+' · '+number(fuel.count)+' '+(fuel.count===1?'fill-up':'fill-ups'),'data-view="fuel" data-current-fuel')}
-    ${tile('loan','Loan & purchase',money(state.loan.monthly),state.loan.monthly==null?'View your loan terms':'Monthly'+(state.loan.months==null?' instalment':' · '+number(state.loan.months)+' months'),'data-action="loan-snapshot" aria-haspopup="dialog"')}
-    ${tile('tips','Car tips',tipsUnavailable?'Saved tips':number(tips.length)+' '+(tips.length===1?'tip':'tips'),'Your notes & reference photos','data-view="tips"')}
+    ${summaryRow('maintenance','Maintenance',money(total),number(state.services.length)+' service '+(state.services.length===1?'visit':'visits'),'data-action="maintenance-recorded" aria-haspopup="dialog"')}
+    ${summaryRow('fuel','Fuel this month',money(fuel.total),monthLabel(month)+' · '+number(fuel.count)+' '+(fuel.count===1?'fill-up':'fill-ups'),'data-view="fuel" data-current-fuel')}
+    ${summaryRow('loan','Loan & purchase',money(state.loan.monthly),state.loan.monthly==null?'View your loan terms':'Monthly'+(state.loan.months==null?' instalment':' · '+number(state.loan.months)+' months'),'data-action="loan-snapshot" aria-haspopup="dialog"')}
+    ${summaryRow('tips','Car tips',tipsUnavailable?'Saved tips':number(tips.length)+' '+(tips.length===1?'tip':'tips'),'Your notes & reference photos','data-view="tips"')}
    </section>
   </div>
   <div class="overview-actions" role="group" aria-label="Quick actions"><button class="primary" data-edit="service">${icon('service')} Log service</button><button class="secondary" data-edit="fuel">${icon('fuel')} Log fill-up</button><button class="secondary" data-edit="vehicle">${icon('car')} Update mileage</button></div>
