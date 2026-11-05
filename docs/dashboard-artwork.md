@@ -4,6 +4,8 @@ Created with the built-in image-generation tool. These are decorative illustrati
 
 The generated PNG originals were retained in the generation library. The app uses WebP copies at their original 1536 × 1024 resolution, quality 80. All five optimized assets together are about 813 KiB. Images have explicit dimensions, and secondary pictures load lazily. Static artwork is cached with the app shell; API documents and reference photos retain their existing cache policy.
 
+Loan & purchase and Car tips retain the original 3:2 image proportions in Overview cards and dashboard headers, keeping the complete car and foreground objects visible at every screen size.
+
 ## Assets and final prompts
 
 ### overview
