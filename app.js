@@ -184,31 +184,23 @@ function renderMaintenance(total,sorted){
   <section class="maintenance-history" aria-labelledby="maintenanceHistoryTitle"><div class="section-title"><h2 id="maintenanceHistoryTitle">Service history</h2><span>Newest first</span></div>${sorted.length?'<div class="service-list">'+sorted.map(serviceRow).join('')+'</div>':empty('No services recorded yet','Log a service to start your maintenance history.')}</section>
  </div>`;
 }
-function renderOverview(total,sorted,loan){
+function renderOverview(total,loan){
  const v=state.vehicle,month=today().slice(0,7),fuel=fuelSummary(state.fuelEntries||[],month);
- const summaryRow=(kind,label,value,copy,attributes)=>'<button class="overview-summary-row" type="button" '+attributes+'><img src="/assets/dashboard-'+kind+'.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"><span class="overview-summary-copy"><strong>'+label+'</strong><small>'+copy+'</small></span><strong class="overview-summary-value">'+value+'</strong><span class="overview-summary-arrow" aria-hidden="true">›</span></button>';
+ const metric=(label,value,copy='',attributes='')=>{const tag=attributes?'button':'div';return '<'+tag+' class="overview-section-metric"'+(attributes?' type="button" '+attributes:'')+'><span>'+esc(label)+(copy?'<small>'+esc(copy)+'</small>':'')+'</span><strong>'+esc(value)+'</strong></'+tag+'>';};
+ const pictureCard=(kind,title,copy,attributes,footer)=>'<section class="overview-section-card section-'+kind+'" aria-labelledby="overview-'+kind+'-title"><button class="overview-section-photo" type="button" '+attributes+' aria-label="Open '+esc(title)+' details"><img src="/assets/dashboard-'+kind+'.webp" alt="" width="1536" height="1024" loading="lazy" decoding="async"></button><div class="overview-section-caption"><div><h2 id="overview-'+kind+'-title">'+esc(title)+'</h2><p>'+esc(copy)+'</p></div><button class="vehicle-details" type="button" '+attributes+' aria-label="'+esc(title)+' details">Details '+icon('arrow')+'</button></div><div class="overview-section-footer">'+footer+'</div></section>';
  return `<div class="overview">
   <header class="overview-heading"><div><p class="eyebrow">PIKA · MY GARAGE</p><h1>Your garage</h1></div><div class="overview-heading-actions"><button class="secondary" type="button" data-view="car" aria-label="My car">${icon('car')}<span>My car</span></button><button class="secondary" type="button" data-view="options">${icon('options')} Options</button></div><p>Your car, your records, one place.</p></header>
-  <div class="overview-top">
-   <div class="overview-vehicle">
-    <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
-     <button class="vehicle-photo" type="button" data-action="car-profile" aria-label="Open car profile" aria-haspopup="dialog"><img src="/assets/dashboard-overview.webp" alt="Red Mica crossover in a garage setting — illustration" width="1536" height="1024" fetchpriority="high" decoding="async"><span class="registration" aria-hidden="true">${esc(v.plate||'Your car')}</span></button>
-     <div class="vehicle-caption"><div><h2 id="overviewVehicleTitle">${esc(v.name)}</h2><p>${esc(v.model)}</p></div><button class="vehicle-details" type="button" data-action="car-profile" aria-label="Car details" aria-haspopup="dialog">Details ${icon('arrow')}</button></div>
-     <div class="vehicle-card-bottom"><div><span>Recorded mileage</span><small>As at ${date(v.odometerDate)}</small></div><strong>${number(v.odometer)} <small>km</small></strong></div>
-    </section>
-    ${nextServiceRow()}
-   </div>
-   <section class="overview-dashboard-links" aria-label="Your dashboards">
-    ${summaryRow('maintenance','Maintenance',money(total),number(state.services.length)+' service '+(state.services.length===1?'visit':'visits'),'data-action="maintenance-recorded" aria-haspopup="dialog"')}
-    ${summaryRow('fuel','Fuel this month',money(fuel.total),monthLabel(month)+' · '+number(fuel.count)+' '+(fuel.count===1?'fill-up':'fill-ups'),'data-view="fuel" data-current-fuel')}
-    ${summaryRow('loan','Loan & purchase',money(state.loan.monthly),state.loan.monthly==null?'View your loan terms':'Monthly'+(state.loan.months==null?' instalment':' · '+number(state.loan.months)+' months'),'data-action="loan-snapshot" aria-haspopup="dialog"')}
-    ${summaryRow('tips','Car tips',tipsUnavailable?'Saved tips':number(tips.length)+' '+(tips.length===1?'tip':'tips'),'Your notes & reference photos','data-view="tips"')}
-   </section>
-  </div>
+  <section class="vehicle-card" aria-labelledby="overviewVehicleTitle">
+   <button class="vehicle-photo" type="button" data-action="car-profile" aria-label="Open car profile" aria-haspopup="dialog"><img src="/assets/dashboard-overview.webp" alt="Red Mica crossover in a garage setting — illustration" width="1536" height="1024" fetchpriority="high" decoding="async"><span class="registration" aria-hidden="true">${esc(v.plate||'Your car')}</span></button>
+   <div class="vehicle-caption"><div><h2 id="overviewVehicleTitle">${esc(v.name)}</h2><p>${esc(v.model)}</p></div><button class="vehicle-details" type="button" data-action="car-profile" aria-label="Car details" aria-haspopup="dialog">Details ${icon('arrow')}</button></div>
+   <div class="vehicle-card-bottom"><div><span>Recorded mileage</span><small>As at ${date(v.odometerDate)}</small></div><strong>${number(v.odometer)} <small>km</small></strong></div>
+  </section>
   <div class="overview-actions" role="group" aria-label="Quick actions"><button class="primary" data-edit="service">${icon('service')} Log service</button><button class="secondary" data-edit="fuel">${icon('fuel')} Log fill-up</button><button class="secondary" data-edit="vehicle">${icon('car')} Update mileage</button></div>
-  <div class="overview-bottom">
-   <section class="overview-activity" aria-labelledby="overviewActivityTitle"><div class="overview-section-head"><h2 id="overviewActivityTitle">Recent maintenance</h2><button class="text-button" data-view="maintenance">View all ${icon('arrow')}</button></div>${sorted.length?'<div class="service-list">'+sorted.slice(0,2).map(serviceRow).join('')+'</div>':empty('No services recorded','Log a service to start your car’s history.')}</section>
-   <section class="overview-finance" aria-labelledby="overviewFinanceTitle"><div class="overview-section-head"><h2 id="overviewFinanceTitle">Purchase & loan</h2><button class="text-button" data-view="loan">View all ${icon('arrow')}</button></div><button class="finance-row" type="button" data-action="original-loan" aria-haspopup="dialog"><span>Original loan amount<small>From your purchase order</small></span><strong>${money(state.purchase.principal)}</strong><span aria-hidden="true">›</span></button><button class="finance-row" type="button" data-action="loan-snapshot" aria-haspopup="dialog"><span>Repayments logged</span><strong>${money(loan.paid)}</strong><span aria-hidden="true">›</span></button></section>
+  <div class="overview-sections" role="group" aria-label="Your dashboards">
+   ${pictureCard('maintenance','Maintenance','Your service history and next visit.','data-view="maintenance"',metric('Recorded cost',money(total),number(state.services.length)+' service '+(state.services.length===1?'visit':'visits'),'data-action="maintenance-recorded" aria-haspopup="dialog"')+nextServiceRow())}
+   ${pictureCard('fuel','Fuel this month',monthLabel(month),'data-view="fuel" data-current-fuel',metric('Fuel spent',money(fuel.total),number(fuel.count)+' '+(fuel.count===1?'fill-up':'fill-ups')+' recorded','data-view="fuel" data-current-fuel')+(fuel.average==null?'':metric('Average per fill-up',money(fuel.average))))}
+   ${pictureCard('loan','Loan & purchase',state.loan.lender||'Your purchase and repayment records.','data-view="loan"',metric('Monthly instalment',money(state.loan.monthly),state.loan.months==null?'':number(state.loan.months)+' months','data-action="loan-snapshot" aria-haspopup="dialog"')+metric('Original loan amount',money(state.purchase.principal),'Original financing','data-action="original-loan" aria-haspopup="dialog"')+metric('Repayments logged',money(loan.paid),number(state.payments.length)+' '+(state.payments.length===1?'payment':'payments'),'data-action="loan-payments" aria-haspopup="dialog"'))}
+   ${pictureCard('tips','Car tips','Your saved notes and reference photos.','data-view="tips"',metric('Saved tips',tipsUnavailable?'Unavailable':number(tips.length)+' '+(tips.length===1?'tip':'tips'),tipsUnavailable?'Refresh to try again':'Open a tip for its full reference.','data-view="tips"'))}
   </div>
   <div class="overview-paperwork"><button type="button" data-view="documents">${icon('document')}<span><strong>Document library</strong><small>${number(documents.length)} original PDFs</small></span>${icon('arrow')}</button><button class="text-button" data-edit="upload">Add a PDF ＋</button></div>
  </div>`;
@@ -234,7 +226,7 @@ function render(){
  if(view==='fuel')content=renderFuel();
  if(view==='tips')content=renderTips();
  if(view==='overview'){
-  content=renderOverview(total,sorted,loan);
+  content=renderOverview(total,loan);
  }
  if(view==='maintenance'){
   content=renderMaintenance(total,sorted);
